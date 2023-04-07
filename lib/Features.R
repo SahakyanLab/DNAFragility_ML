@@ -17,25 +17,30 @@ Features <- R6::R6Class(
         #' @field standardise_stats List of stats extracted from the training data.
         standardise_stats = NULL,
 
-        initialize = function(k, exp, seed, assembly, 
-                              break_score, scores_with_kmers){
+        initialize = function(k, exp, seed, scores_with_kmers, assembly,
+                              break_score, ranges, exp_to_remove_in_table){
             if(!missing(exp)) private$exp <- exp
+            if(!missing(exp_to_remove_in_table)){
+                private$exp_to_remove_in_table <- exp_to_remove_in_table
+            }
             super$initialize(
                 k = k, 
                 exp = exp, 
                 seed = seed,
-                assembly = assembly
-            )
-
-            # extracts true and control breakpoints
-            self$get_breaks(
-                break_score = break_score,
-                scores_with_kmers = scores_with_kmers
+                scores_with_kmers = scores_with_kmers,
+                assembly = assembly,
+                break_score = break_score
             )
         },
 
         #' @description 
         #' Extract features for use in machine learning model.
+        #' @param break_type Character vector of any of c("biological", "enzymatic", "high_frequency"). 
+        #'  If user knows the type of breakage but does not have any range effect values, the maximum
+        #'  range effect cross similar types of breakages will be taken. If no type is given, user 
+        #'  has to input 3 range effects into the ranges parameter.
+        #' @param ranges Numeric vector of length 3, where position 1 is the short range effect, 
+        #'  position 2 is the medium range effect, and position 3 is the long range effect.
         #' @param FEAT_G4_REGEX Boolean. If TRUE, this feature gets extracted.
         #' @param g4_type Character vector. c("GPQS", "GQS", "APQS", "AQS").
         #' @param FEAT_GC_COUNT Boolean. If TRUE, this feature gets extracted.
@@ -46,33 +51,75 @@ Features <- R6::R6Class(
         #' @param sliding_window Numeric vector. Local sub-sequence window size to run viennaRNA on.
         #' @param nuc_type Character vector. c("DNA", "RNA").
         #' @param FEAT_RNAfold.CALL Character vector. Root directory of the viennaRNA programme.
+        #' @param maxloopsize Numeric vector of maximum loop size for G4 sequences.
         #' @param DNA_SHAPE Boolean. If TRUE, this feature gets extracted.
-        #' @param FEAT_TFBS_EUCLIDEAN_DISTANCE Boolean. If TRUE, this feature gets extracted.
-        #' @param FEAT_OCCUPANCY_SCORES Boolean. If TRUE, this feature gets extracted.
-        #' @param FEAT_QM_PARAMETERS Boolean. If TRUE, this feature gets extracted.
         #' @param SAVE_OUTPUT Boolean. If TRUE, feature matrix gets backed-up as csv file.
         #' @return None.
-        get_features = function(FEAT_G4_REGEX = TRUE, g4_type = "GPQS",
+        get_features = function(break_type = "biological", ranges = NULL,
+                                FEAT_G4_REGEX = TRUE, g4_type = "GPQS",
                                 FEAT_GC_COUNT = TRUE,
                                 FEAT_KMER_COUNTS = TRUE, crash_test = FALSE, kmer_window = 3,
                                 FEAT_VIENNA_RNA = TRUE, sliding_window = NULL, nuc_type = "DNA",
                                 RNAfold.CALL = "/Users/paddy/opt/anaconda3/bin/RNAfold",
+                                maxloopsize = 12,
                                 FEAT_DNA_SHAPE = TRUE,
-                                FEAT_TFBS_EUCLIDEAN_DISTANCE = FALSE,
-                                FEAT_OCCUPANCY_SCORES = TRUE,
-                                FEAT_QM_PARAMETERS = TRUE,
                                 SAVE_OUTPUT = TRUE){
             start.time <- Sys.time()
 
+            # extracts true and control breakpoints
+            self$get_breaks(break_type = break_type, ranges = ranges)
+
+            # private vars
+            private$maxloopsize <- maxloopsize
+
+            # generate true breakpoint table
             true.breaks.mat <- cbind(
                 self$true_breaks$zscore$scores,
                 self$true_breaks$ratio$scores
-            )                                        
-            private$column_names$BREAKS <- colnames(true.breaks.mat)
+            )
+
+            # Query table contains breaks, tfbs, epigenome marks and QM params. Split it up.
+            # TFBS
+            tfbs.ind <- which(grepl(pattern = "TFBS_", colnames(true.breaks.mat)))
+            private$column_names$TFBS <- colnames(true.breaks.mat)[tfbs.ind]
+
+            # QM parameters
+            qm.ind <- which(grepl(pattern = "_ds.dEhof", colnames(true.breaks.mat)))
+            private$column_names$QM_PARAMETERS <- colnames(true.breaks.mat)[qm.ind]
+
+            # G4seq map
+            g4.ind <- which(grepl(pattern = "G4seq", colnames(true.breaks.mat)))
+            private$column_names$G4MAP <- colnames(true.breaks.mat)[g4.ind]
+
+            # epigenome marks
+            epigenome.ind <- which(grepl(
+                pattern = "Epigenome|ATACseq|Chipseq|Dnaseseq|FAIREseq", 
+                colnames(true.breaks.mat)
+            ))
+            private$column_names$EPIGENOME_MARKS <- colnames(true.breaks.mat)[epigenome.ind]            
+
+            # remove the dataset that is present in the true breakpoint tables
+            true.breaks.mat <- true.breaks.mat[,-which(grepl(
+                pattern = private$exp_to_remove_in_table, 
+                x = colnames(true.breaks.mat))
+            )]
+
+            # remaining ones are the breakage scores
+            non.breaks.ind <- sort(c(tfbs.ind, qm.ind, g4.ind, epigenome.ind))
+            breaks.ind <- which(!(1:ncol(true.breaks.mat) %in% non.breaks.ind))
+            private$column_names$BREAKS <- colnames(true.breaks.mat)[breaks.ind]
+
+            # generate control breakpoint table
             control.breaks.mat <- cbind(
                 self$control_breaks$zscore$scores,
                 self$control_breaks$ratio$scores
             )
+            # remove the dataset that is present in the control breakpoint tables
+            control.breaks.mat <- control.breaks.mat[,-which(grepl(
+                pattern = private$exp_to_remove_in_table, 
+                x = colnames(control.breaks.mat))
+            )]
+            
             col.ind <- NULL
 
             if(FEAT_G4_REGEX){
@@ -140,52 +187,6 @@ Features <- R6::R6Class(
                 control.breaks.mat <- cbind(control.breaks.mat, private$dna_shape$control_breaks)
             }
 
-            if(FEAT_TFBS_EUCLIDEAN_DISTANCE){
-                private$get_tfbs_euclidean_distance(data = "breaks")
-                private$get_tfbs_euclidean_distance(data = "control")
-
-                true.breaks.mat <- cbind(
-                    true.breaks.mat, 
-                    private$tfbs_euclidean_distance$true_breaks
-                )
-                control.breaks.mat <- cbind(
-                    control.breaks.mat, 
-                    private$tfbs_euclidean_distance$control_breaks
-                )
-            }
-
-            if(FEAT_OCCUPANCY_SCORES){
-                find.upper.lim <- c(2, 4, 6, self$k)
-                upper.limit <- max(find.upper.lim[find.upper.lim <= 6])
-
-                private$get_occupancy_scores(data = "breaks", k = upper.limit)
-                private$get_occupancy_scores(data = "control", k = upper.limit)
-
-                true.breaks.mat <- cbind(
-                    true.breaks.mat, 
-                    private$occupancy_scores$true_breaks
-                )
-                control.breaks.mat <- cbind(
-                    control.breaks.mat, 
-                    private$occupancy_scores$control_breaks
-                )
-            }
-
-            if(FEAT_QM_PARAMETERS){
-                private$generate_kmer_table(k = 7)
-                private$get_qm_parameters(data = "breaks")
-                private$get_qm_parameters(data = "control")
-
-                true.breaks.mat <- cbind(
-                    true.breaks.mat, 
-                    private$qm_parameters$true_breaks
-                )
-                control.breaks.mat <- cbind(
-                    control.breaks.mat, 
-                    private$qm_parameters$control_breaks
-                )
-            }
-
             # progress message
             t1 <- Sys.time()
             cur.msg <- "Concatenating all features into one matrix"
@@ -219,38 +220,36 @@ Features <- R6::R6Class(
             if(SAVE_OUTPUT){
                 # progress message
                 t1 <- Sys.time()
-                cur.msg <- "Backing-up results as csv files"
+                cur.msg <- "Backing-up results as RData files"
                 l <- paste0(rep(".", 70-nchar(cur.msg)), collapse = "")
                 cat(paste0(cur.msg, l))
 
                 saveRDS(
                     private$column_names, 
                     file = paste0("../data/feature_matrix/", private$exp, 
-                                  "_kmer-", self$k, "_", 
+                                  "_kmer-", self$k, "_seed-", self$seed, "_",
                                   ifelse(private$break_score_all == TRUE,
                                   "all", private$break_score), 
                                   "-features_COLNAMES.RData"),
                 )
 
-                fwrite(
-                    x = self$feature_matrix, 
+                saveRDS(
+                    self$feature_matrix, 
                     file = paste0("../data/feature_matrix/", private$exp, 
-                                  "_kmer-", self$k, "_", 
+                                  "_kmer-", self$k, "_seed-", self$seed, "_",
                                   ifelse(private$break_score_all == TRUE,
                                   "all", private$break_score), 
-                                  "-features.csv"),
-                    showProgress = FALSE
+                                  "-features.RData")
                 )
 
                 to.keep <- c("predictor", private$column_names$BREAKS)
-                fwrite(
-                    x = self$feature_matrix[, ..to.keep], 
+                saveRDS(
+                    self$feature_matrix[, ..to.keep], 
                     file = paste0("../data/feature_matrix/", private$exp, 
-                                  "_kmer-", self$k, "_", 
+                                  "_kmer-", self$k, "_seed-", self$seed, "_", 
                                   ifelse(private$break_score_all == TRUE,
                                   "all", private$break_score), 
-                                  "-breakscores.csv"),
-                    showProgress = FALSE
+                                  "-breakscores.RData")
                 )
 
                 total.time <- Sys.time() - t1
@@ -259,37 +258,35 @@ Features <- R6::R6Class(
             }
 
             final.time <- Sys.time() - start.time
-            cat("Final time taken:", t[[1]], attr(t, "units"), "\n")
+            cat(paste(c(rep("-", 70), "\n"), collapse = ""))
+            cat("Final time taken:", final.time[[1]], 
+                attr(final.time, "units"), "\n")
             cat(paste(c(rep("-", 70), "\n"), collapse = ""))
         },
 
         #' @description
         #' Import feature matrix from csv file if exists.
         #' @return None.
-        get_features_from_csv = function(){
+        get_features_from_file = function(){
             # progress message
             t1 <- Sys.time()
-            cur.msg <- "Importing feature matrix from csv"
+            cur.msg <- "Importing feature matrix from RData file"
             l <- paste0(rep(".", 70-nchar(cur.msg)), collapse = "")
             cat(paste0(cur.msg, l))
 
             file.to.import <- paste0(
                 "../data/feature_matrix/", private$exp, 
-                "_kmer-", self$k, "_", 
+                "_kmer-", self$k, "_seed-", self$seed, "_",
                 ifelse(private$break_score_all, 
                        "all", private$break_score), 
-                "-features.csv"
+                "-features.RData"
             )
 
             if(file.exists(file.to.import)){
-                self$feature_matrix <- fread(
-                    file.to.import,
-                    showProgress = FALSE
-                )
-
+                self$feature_matrix <- readRDS(file.to.import)
                 private$column_names <- readRDS(
                     paste0("../data/feature_matrix/", private$exp, 
-                           "_kmer-", self$k, "_", 
+                           "_kmer-", self$k, "_seed-", self$seed, "_", 
                            ifelse(private$break_score_all, 
                                   "all", private$break_score), 
                            "-features_COLNAMES.RData")
@@ -329,8 +326,10 @@ Features <- R6::R6Class(
                     private$column_names$BREAKS,
                     private$column_names$VIENNA_RNA,
                     private$column_names$DNA_SHAPE,
-                    private$column_names$OCCUPANCY_SCORES,
-                    private$column_names$QM_PARAMETERS),
+                    private$column_names$QM_PARAMETERS,
+                    private$column_names$TFBS,
+                    private$column_names$G4MAP,
+                    private$column_names$EPIGENOME_MARKS),
                     use.names = FALSE),
                 "all" = unlist(private$column_names, use.names = FALSE)
             )
@@ -445,12 +444,18 @@ Features <- R6::R6Class(
                     "only_breaks" = private$column_names$BREAKS,
                     "only_triplets" = private$column_names$KMER_COUNTS,
                     "only_singleton" = private$column_names$SINGLETON,
+                    "singleton_and_gc" = unlist(c(
+                        private$column_names$SINGLETON,
+                        private$column_names$GC_COUNT),
+                        use.names = FALSE),
                     "complex" = unlist(c(
                         private$column_names$BREAKS,
                         private$column_names$VIENNA_RNA,
                         private$column_names$DNA_SHAPE,
-                        private$column_names$OCCUPANCY_SCORES,
-                        private$column_names$QM_PARAMETERS),
+                        private$column_names$QM_PARAMETERS,
+                        private$column_names$TFBS,
+                        private$column_names$G4MAP,
+                        private$column_names$EPIGENOME_MARKS),
                         use.names = FALSE),
                     "all" = unlist(private$column_names, use.names = FALSE)
                 )
@@ -505,7 +510,7 @@ Features <- R6::R6Class(
         sliding_window = NULL,
 
         #' @field maxloopsize Numeric vector of maximum loop size for G4 sequences.
-        maxloopsize = 12,
+        maxloopsize = NULL,
 
         #' @field g4_regex List of G4 regex matrix matches.
         g4_regex = NULL,
@@ -528,17 +533,6 @@ Features <- R6::R6Class(
         #' @field dna_shape Matrix Array of DNAShapeR calculations.
         dna_shape = NULL,
 
-        #' @field tfbs_euclidean_distance Data.Table of normalised
-        #' euclidean distance calculations.
-        tfbs_euclidean_distance = NULL,
-
-        #' @field occupancy_scores Data.Table of k-mer enrichment and depletion scores
-        #' extracted from protein occupancy profiles.
-        occupancy_scores = NULL,
-
-        #' @field qm_parameters Data.Table of average heptamer quantum mechanical parameters.
-        qm_parameters = NULL,
-
         #' @field exp Character vector of experiment name.
         exp = NULL,
 
@@ -547,6 +541,10 @@ Features <- R6::R6Class(
 
         #' @field backup_feature_matrix Data.Table of Feature Matrix for backup.
         backup_feature_matrix = NULL,
+
+        #' @field exp_to_remove_in_table Character vector of the dataset to remove which the 
+        #'  model is being trained on.
+        exp_to_remove_in_table = NULL,
 
         #' @description 
         #' Find G4 regular expression in supplied DNA sequence.
@@ -565,9 +563,16 @@ Features <- R6::R6Class(
             cat(paste0(cur.msg, l))
 
             datatable.seq <- switch(data,
-                "breaks" = Biostrings::getSeq(private$ref, self$true_breaks_expanded$mid_range),
-                "control" = Biostrings::getSeq(private$ref, self$control_breaks_expanded$mid_range)
+                "breaks" = Biostrings::getSeq(
+                    private$ref, 
+                    self$true_breaks_expanded$mid_range
+                ),
+                "control" = Biostrings::getSeq(
+                    private$ref, 
+                    self$control_breaks_expanded$mid_range
+                )
             )
+            datatable.seq <- paste0(datatable.seq)
 
             if(g4_type == "GPQS" | g4_type == "GQS"){
                 plus.strand.regex  <- paste0("([gG]{3,}[NATGCnatgc]{1,", 
@@ -783,7 +788,7 @@ Features <- R6::R6Class(
                 # frequency of mfe structure in ensemble
                 interval <- seq(5, dim(temp.out)[1], 5)
                 viennaRNA.FRQ <- gsub("frequency of mfe structure in ensemble|;", "", 
-                                        temp.out$V1[interval])
+                                      temp.out$V1[interval])
                 viennaRNA.FRQ <- as.numeric(viennaRNA.FRQ)
 
                 # combine results
@@ -884,7 +889,7 @@ Features <- R6::R6Class(
                 "Predicting DNA shape within control regions"
             )
             l <- paste0(rep(".", 70-nchar(cur.msg)), collapse = "")
-            cat(cur.msg, l, "\n", sep = "")
+            cat(paste0(cur.msg, l))            
 
             datatable.seq <- switch(data,
                 "breaks" = self$true_breaks_expanded$mid_range,
@@ -894,8 +899,8 @@ Features <- R6::R6Class(
             # predict DNA shape
             DNAshapeR::getFasta(datatable.seq, private$ref, 
                                 width = as.numeric(width(datatable.seq)[1]), 
-                                filename = "temp.fa")
-            pred <- DNAshapeR::getShape("temp.fa")
+                                filename = "temp.fa") %>% suppressMessages()
+            pred <- DNAshapeR::getShape("temp.fa") %>% suppressMessages()
 
             # compute summary statistics
             shape.name <- c("HelT", "MGW", "ProT", "Roll")
@@ -903,8 +908,10 @@ Features <- R6::R6Class(
                 row.mean <- matrixStats::rowMeans2(pred[[x]], na.rm = TRUE)
                 row.sd <- matrixStats::rowSds(pred[[x]], na.rm = TRUE)
                 combined <- cbind(row.mean, row.sd)
-                colnames(combined) <- c(paste0(shape.name[x], ".mean"), 
-                                        paste0(shape.name[x], ".sd"))
+                colnames(combined) <- c(
+                    paste0(shape.name[x], ".mean"), 
+                    paste0(shape.name[x], ".sd")
+                )
                 return(combined)
             })
 
@@ -921,207 +928,10 @@ Features <- R6::R6Class(
                 full.names = TRUE
             )
             invisible(file.remove(files.to.remove))
-        },
-
-        #' @description 
-        #' Extracts the normalised euclidean distances between
-        #' the PWMs from core homo sapiens TFBS and PWMs of 4^k-mers.
-        #' @param data Character vector of "breaks" or "control".
-        #' @return None.
-        get_tfbs_euclidean_distance = function(data){
-            # progress message
-            t1 <- Sys.time()
-            cur.msg <- ifelse(
-                data == "breaks",
-                "Extracting euc.dist of TFBS/k-mers within true break regions",
-                "Extracting euc.dist of TFBS/k-mers within control regions"
-            )
-            l <- paste0(rep(".", 70-nchar(cur.msg)), collapse = "")
-            cat(paste0(cur.msg, l))
-
-            datatable.seq <- switch(data,
-                "breaks" = Biostrings::getSeq(private$ref, self$true_breaks[[private$break_score]]$kmer),
-                "control" = Biostrings::getSeq(private$ref, self$control_breaks[[private$break_score]]$kmer)
-            )
-
-            # import tfbs euclidean distance file
-            tfbs.datatable <- fread(
-                file = paste0("../data/tfbs/PCs_QueryTable-kmer_", self$k,".csv"),
-                # file = paste0("../data/tfbs/QueryTable-kmer_", self$k,".csv")
-                showProgress = FALSE
-            )
-
-            # match corresponding k-mer in query table
-            tfbs.kmers <- Biostrings::DNAStringSet(tfbs.datatable$kmer)
-
-            # forward k-mers
-            match.kmers <- match(datatable.seq, tfbs.kmers)
-            # reverse k-mers
-            any.na <- is.na(match.kmers)
-            rev.kmers <- reverseComplement(datatable.seq[any.na])
-            match.rev.kmers <- match(rev.kmers, tfbs.kmers)
-            # combine results
-            match.kmers[any.na] <- match.rev.kmers
-
-            # extract rows based on k-mer matches
-            datatable <- tfbs.datatable[match.kmers, -"kmer"]
-
-            if(data == "breaks"){
-                private$tfbs_euclidean_distance$true_breaks <- datatable
-                private$column_names$TFBS_EUCLIDEAN_DISTANCE <- colnames(datatable)
-            } else if(data == "control"){
-                private$tfbs_euclidean_distance$control_breaks <- datatable
-            }
 
             total.time <- Sys.time() - t1
             cat("DONE! --", signif(total.time[[1]], 2), 
-                attr(total.time, "units"), "\n")
-        },
-
-        #' @description 
-        #' Extract the enrichment and depletion scores of each k-mer
-        #' for each protein occupancy profile.
-        #' @param data Character vector of "breaks" or "control".
-        #' @return None.
-        get_occupancy_scores = function(data, k){
-            # progress message
-            t1 <- Sys.time()
-            cur.msg <- ifelse(
-                data == "breaks",
-                "Extracting occupancy k-mer scores within true break regions",
-                "Extracting occupancy k-mer scores within control regions"
-            )
-            l <- paste0(rep(".", 70-nchar(cur.msg)), collapse = "")
-            cat(paste0(cur.msg, l))
-
-            datatable.seq <- switch(data,
-                "breaks" = Biostrings::getSeq(
-                    private$ref, 
-                    self$true_breaks_expanded$kmer_occupancy
-                ),
-                "control" = Biostrings::getSeq(
-                    private$ref, 
-                    self$control_breaks_expanded$kmer_occupancy
-                )
-            )
-
-            # import tfbs euclidean distance file
-            datatable <- fread(
-                file = paste0("../data/kmertone/QueryTable/QueryTable_occupancy_",
-                              "kmer-", 6, "_",
-                              private$break_score, ".csv"), 
-                showProgress = FALSE
-            )
-            datatable.category <- datatable$category
-            datatable.category <- paste0(datatable$category, "_", private$break_score)
-            datatable <- datatable[, -"category"]
-            
-            # match corresponding k-mer in query table
-            query.kmers <- Biostrings::DNAStringSet(colnames(datatable))
-
-            # forward k-mers
-            match.kmers <- match(datatable.seq, query.kmers)
-
-            # reverse k-mers
-            any.na <- is.na(match.kmers)
-            rev.kmers <- Biostrings::reverseComplement(datatable.seq[any.na])
-            match.rev.kmers <- match(rev.kmers, query.kmers)
-            # combine results
-            match.kmers[any.na] <- match.rev.kmers
-
-            # # extract columns based on k-mer matches
-            datatable <- as.matrix(datatable[, ..match.kmers])
-            colnames(datatable) <- NULL
-            rownames(datatable) <- datatable.category
-            datatable <- as.data.table(t(datatable))
-
-            if(data == "breaks"){
-                private$occupancy_scores$true_breaks <- datatable
-                private$column_names$OCCUPANCY_SCORES <- colnames(datatable)
-            } else if(data == "control"){
-                private$occupancy_scores$control_breaks <- datatable
-            }
-
-            total.time <- Sys.time() - t1
-            cat("DONE! --", signif(total.time[[1]], 2), 
-                attr(total.time, "units"), "\n")
-        },
-
-        #' @description 
-        #' Extract the QM pre-parameterised k-mers.
-        #' @param data Character vector of "breaks" or "control".
-        #' @return None.
-        get_qm_parameters = function(data){
-            # progress message
-            t1 <- Sys.time()
-            cur.msg <- ifelse(
-                data == "breaks",
-                "Extracting QM params for 7-mers within true break regions",
-                "Extracting QM params for 7-mers within control regions"
-            )
-            l <- paste0(rep(".", 70-nchar(cur.msg)), collapse = "")
-            cat(paste0(cur.msg, l))
-
-            left.seq <- switch(data, 
-                "breaks" = Biostrings::getSeq(private$ref, self$true_breaks_expanded$qm_left_kmer),
-                "control" = Biostrings::getSeq(private$ref, self$control_breaks_expanded$qm_left_kmer)
-            )
-            right.seq <- switch(data, 
-                "breaks" = Biostrings::getSeq(private$ref, self$true_breaks_expanded$qm_right_kmer),
-                "control" = Biostrings::getSeq(private$ref, self$control_breaks_expanded$qm_right_kmer)
-            )
-
-            # import tfbs euclidean distance file
-            qm.table <- fread(
-                file = "../data/QM_parameters/compiled_data/denergy.txt",
-                showProgress = FALSE
-            )
-            # only keep diff in heat of formation, and ionisation potential features
-            to.keep <- colnames(qm.table)[grepl(
-                pattern = "seq|dEhof|dIP", 
-                x = colnames(qm.table)
-            )]
-            qm.table <- qm.table[, ..to.keep]
-
-            #' @description 
-            #' Process forward and reverse k-mers
-            #' @param qm.datatable Data.Table of quantum mechanical parameters.
-            #' @param which.seq GRanges object of the heptamers to process.
-            #' @return None.
-            process.kmers <- function(qm.datatable, which.seq){
-                # only keep first occurring kmer in lexicological order 
-                qm.datatable <- qm.datatable[match(private$heptamer_ref$kmer, qm.datatable$seq)]
-                query.kmers <- Biostrings::DNAStringSet(qm.datatable$seq)
-
-                # forward k-mers
-                match.kmers <- match(which.seq, query.kmers)
-                # reverse k-mers
-                any.na <- is.na(match.kmers)
-                rev.kmers <- Biostrings::reverseComplement(which.seq[any.na])
-                match.rev.kmers <- match(rev.kmers, query.kmers)
-                # combine results
-                match.kmers[any.na] <- match.rev.kmers
-
-                # extract columns based on k-mer matches
-                datatable <- qm.datatable[match.kmers, -"seq"]
-                return(as.matrix(datatable))
-            }
-
-            left.seq <- process.kmers(qm.datatable = qm.table, which.seq = left.seq)
-            right.seq <- process.kmers(qm.datatable = qm.table, which.seq = right.seq)
-            avg.seq <- (left.seq+right.seq)/2
-            avg.seq <- as.data.table(avg.seq)
-
-            if(data == "breaks"){
-                private$qm_parameters$true_breaks <- avg.seq
-                private$column_names$QM_PARAMETERS <- colnames(avg.seq)
-            } else if(data == "control"){
-                private$qm_parameters$control_breaks <- avg.seq
-            }
-
-            total.time <- Sys.time() - t1
-            cat("DONE! --", signif(total.time[[1]], 2), 
-                attr(total.time, "units"), "\n")
+                attr(total.time, "units"), "\n")            
         }
     )
 )
