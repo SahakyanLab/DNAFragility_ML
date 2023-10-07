@@ -2,7 +2,7 @@ KmerTable <- R6::R6Class(
     classname = "KmerTable",
     public = list(
         #' @field k Numeric vector of k-mer size.
-        k = 4,
+        k = 8,
 
         #' @field score Character vector of "zscore" or "ratios".
         break_score = "zscore",
@@ -12,7 +12,7 @@ KmerTable <- R6::R6Class(
         statistic = "mean",
 
         #' @field exp Character vector of experiment name.
-        exp = NULL,
+        exp = "",
 
         #' @field kmer_list Character vector of k-mers.
         kmer_list = NULL,
@@ -20,10 +20,6 @@ KmerTable <- R6::R6Class(
         #' @field kmer_ref Data.table of first occurring 
         #' kmer in lexicological order.
         kmer_ref = NULL,
-
-        #' @field kmer_ref_occupancy Data.table of first occurring 
-        #' kmer in lexicological order for protein occupancies.
-        kmer_ref_occupancy = NULL,
 
         #' @field leftout_table Data.table of breakage scores
         #' for the experiment left out.
@@ -57,50 +53,46 @@ KmerTable <- R6::R6Class(
 
             # Query_Table for k-mer breakage propensities
             df <- lapply(private$categories, function(category){
-                return(private$get_data(data = private$org, 
-                                        category = category,
-                                        occupancy = FALSE))
+                return(private$get_data(
+                    data = private$org, 
+                    category = category
+                ))
             })
             df <- rbindlist(df)
             df <- as_tibble(df) %>% 
-                tidyr::spread(key = "kmer", value = "value")
+                tidyr::pivot_wider(
+                    names_from = "kmer",
+                    values_from = "value"
+                )
             fwrite(
                 x = df, 
-                file = paste0("../data/kmertone/QueryTable/",
-                                "QueryTable_kmer-", 
-                                self$k, "_", self$break_score, ".csv")
+                file = paste0(
+                    "../data/kmertone/QueryTable/QueryTable_kmer-", 
+                    self$k, "_", self$break_score, ".csv"
+                )
             )
 
-            df <- lapply(private$category_leftout, function(category){
-                return(private$get_data(data = private$org_leftout, 
-                                        category = category,
-                                        occupancy = FALSE))
-            })
-            df <- rbindlist(df)
-            df <- as_tibble(df) %>% 
-                tidyr::spread(key = "kmer", value = "value")
-            fwrite(
-                x = df, 
-                file = paste0("../data/kmertone/QueryTable/",
-                                "QueryTable_Leftout_kmer-", 
-                                self$k, "_", self$break_score, ".csv")
-            )
-
-            # Query_Table for protein occupancies
-            df <- lapply(private$categories_occupancy, function(category){
-                return(private$get_data(data = private$org_occupancy, 
-                                        category = category,
-                                        occupancy = TRUE))
-            })
-            df <- rbindlist(df)
-            df <- as_tibble(df) %>% 
-                tidyr::spread(key = "kmer", value = "value")
-            fwrite(
-                x = df, 
-                file = paste0("../data/kmertone/QueryTable/",
-                                "QueryTable_occupancy_kmer-", 
-                                self$k, "_", self$break_score, ".csv")
-            )
+            if(length(private$category_leftout) > 0){
+                df <- lapply(private$category_leftout, function(category){
+                    return(private$get_data(
+                        data = private$org_leftout, 
+                        category = category
+                    ))
+                })
+                df <- rbindlist(df)
+                df <- as_tibble(df) %>% 
+                    tidyr::pivot_wider(
+                        names_from = "kmer",
+                        values_from = "value"
+                    )
+                fwrite(
+                    x = df, 
+                    file = paste0(
+                        "../data/kmertone/QueryTable/QueryTable_Leftout_kmer-", 
+                        self$k, "_", self$break_score, ".csv"
+                    )
+                )
+            }
 
             total.time <- Sys.time() - t1
             cat("DONE! --", signif(total.time[[1]], 2), 
@@ -128,14 +120,8 @@ KmerTable <- R6::R6Class(
         #' @field categories Character vector of all breakage types.
         categories = NULL,
 
-        #' @field categories_occupancy Character vector of all occupancy types.
-        categories_occupancy = NULL,
-
         #' @field org Data.table of the full org_file.csv
         org = NULL,
-
-        #' @field org_occupancy Data.table of the full org_file.csv occupancies.
-        org_occupancy = NULL,
 
         #' @field category_leftout Character vector of the breakage type left out.
         category_leftout = NULL,
@@ -144,15 +130,14 @@ KmerTable <- R6::R6Class(
         org_leftout = NULL,
 
         #' @field group_exp Boolean. If TRUE, groups breakage exp by similar types.
-        group_exp = NULL,
+        group_exp = TRUE,
 
         #' @description 
         #' A utility function to generate k-mers.
         #' Then, only keeps first occurring k-mer in lexicological order.
         #' @return None.
-        generate_table = function(){
-            k.mers <- do.call(data.table::CJ, 
-                              rep(list(c("A", "C", "G", "T")), self$k))
+        generate_table = function(){            
+            k.mers <- do.call(data.table::CJ, rep(list(c("A", "C", "G", "T")), self$k))
             self$kmer_list <- k.mers[, do.call(paste0, .SD)]
             
             rev.comp <- as.character(
@@ -169,19 +154,22 @@ KmerTable <- R6::R6Class(
         #' @return None.
         get_org = function(all_exp){
             org.file <- fread("../data/org_file.csv", showProgress = FALSE)
-            org.file[, bp.exp := paste0(Fragmentation_type, "/", 
-                                        Experiment_folder)]
+            org.file[, bp.exp := paste0(`Fragmentation type`, "/", `Experiment folder`)]
 
             # discard rows for use in machine learning model
-            to.discard <- which(grepl(
-                pattern = self$exp, 
-                x = org.file$Fragmentation_type, 
-                ignore.case = TRUE
-            ))
+            to.discard <- NULL
+            if(self$exp != ""){
+                to.discard <- which(grepl(
+                    pattern = self$exp, 
+                    x = org.file$Category_Main, 
+                    ignore.case = TRUE
+                ))
+            }
+
             if(length(to.discard) > 0){
                 private$org_leftout <- org.file[to.discard, ]
                 if(private$group_exp){
-                    private$category_leftout <- private$org_leftout$Category_main
+                    private$category_leftout <- private$org_leftout$Category_Main
                 } else {
                     private$category_leftout <- private$org_leftout$bp.exp
                 }
@@ -189,24 +177,13 @@ KmerTable <- R6::R6Class(
             }
 
             # for breakpoints
-            private$org <- org.file[DSB_Map == TRUE, ]
+            private$org <- org.file[`DSB Map` == TRUE, ]
             if(private$group_exp){
-                categories <- unique(private$org$Category_main)
+                categories <- unique(private$org$Category_Main)
             } else {
                 categories <- private$org$bp.exp
             }
             private$categories <- sort(categories[which(categories != "")])
-
-            # for occupancy profiles
-            private$org_occupancy <- org.file[DSB_Map == FALSE, ]
-            if(private$group_exp){
-                categories_occupancy <- unique(private$org_occupancy$Category_main)
-            } else {
-                categories_occupancy <- private$org_occupancy$bp.exp
-            }
-            private$categories_occupancy <- sort(
-                categories_occupancy[which(categories_occupancy != "")]
-            )
         },
 
         #' @description
@@ -214,17 +191,16 @@ KmerTable <- R6::R6Class(
         #' or z-scores per group of breakage source.
         #' @param category Character vector of a single breakage source.
         #' @return A data.table of k-mer scores per breakage category.
-        get_data = function(data, category, occupancy = FALSE){
+        get_data = function(data, category){
             if(private$group_exp){
-                org.filtered <- data[Category_main == category, bp.exp]
+                org.filtered <- data[Category_Main == category, bp.exp]
             } else {
                 org.filtered <- data[bp.exp == category, bp.exp]
             }
 
             # mean/median of same breakage type
             out <- lapply(1:length(org.filtered), function(x){
-                return(private$summarise_score(file = org.filtered[x],
-                                               occupancy = occupancy))
+                return(private$summarise_score(file = org.filtered[x]))
             })
 
             out <- switch(self$statistic,
@@ -252,12 +228,9 @@ KmerTable <- R6::R6Class(
         #' A utility function to calculate k-mer probability ratios or z-scores.
         #' @param file Character vector of the specified breakage type.
         #' @return A data.table of scores.
-        summarise_score = function(file, occupancy){
+        summarise_score = function(file){
             files <- list.files(
-                path = ifelse(occupancy,
-                              paste0("../data/occupancy_profiles/", 
-                                     file, "/kmertone/results"),
-                              paste0("../data/kmertone/", file)),
+                path = paste0("../data/kmertone/", file),
                 pattern = paste0("score_", self$k),
                 full.names = TRUE
             )
@@ -267,20 +240,39 @@ KmerTable <- R6::R6Class(
                 sep = ",", header = TRUE, showProgress = FALSE,
                 select = c("case", "control", "z")
             )
-
             data.set[, kmer := self$kmer_list]
-            data.set <- data.set[!which(is.na(data.set$z)), ]
-            data.set <- data.set[!which(is.infinite(data.set$z)), ]
+
+            # if any infinite or NAs, impute using smaller k-mers
+            to_impute <- which(!is.finite(data.set$z))
+            if(length(to_impute) > 0){
+                # generate rolling k-mers
+                which_kmers <- data.set$kmer[to_impute]
+                kmer = which_kmers[1]
+                for(ind in 1:length(which_kmers)){
+                    kmer <- which_kmers[ind]
+
+                    # replace with 5 nearest neighbour result
+                    mat <- cbind(data.set$kmer, rep(kmer, nrow(data.set)))
+
+                    # global (NW) alignment
+                    levdist_mat <- LevenshteinLoop(mat)[,1]
+
+                    # first five nearest neighbours of finite values 
+                    # and excluding the first result as it's the query kmer.
+                    k <- 5
+                    nn_ind <- order(levdist_mat)[2:length(levdist_mat)]
+                    pot_candidates <- data.set$z[nn_ind]
+                    target_z <- mean(pot_candidates[is.finite(pot_candidates)][1:k])
+                    data.set$z[to_impute[ind]] <- target_z
+                }
+            }
 
             # only keep first occurring kmer in lexicological order 
             data.set <- data.set[match(self$kmer_ref$kmer, data.set$kmer)]
-
             output <- switch(self$break_score,
                 "ratio" = {
-                    norm.case <- data.set$case/sum(data.set$case, 
-                                                   na.rm = TRUE)
-                    norm.control <- data.set$control/sum(data.set$control, 
-                                                         na.rm = TRUE)
+                    norm.case <- data.set$case/sum(data.set$case, na.rm = TRUE)
+                    norm.control <- data.set$control/sum(data.set$control, na.rm = TRUE)
                     ratio <- norm.case/norm.control 
                 },
                 "zscore" = data.set$z
