@@ -88,6 +88,7 @@ Features <- R6::R6Class(
 
             # extracts true and control breakpoints
             self$get_breaks(break_type = break_type, ranges = ranges)
+            if(self$out == -1) return(-1)
             col.ind <- NULL
 
             if(FEAT_PROCESS_LIKE_IMAGE){
@@ -163,7 +164,7 @@ Features <- R6::R6Class(
                 }
 
                 if(FEAT_LONGRANGE_PREPARAMS){
-                    private$kmer_window <- 8
+                    private$kmer_window <- 6
                     private$generate_kmer_table()
                     private$get_longrange_preparams(data = "breaks", only_breaks = only_breaks)
                     if(!private$regression & private$get_controls){
@@ -173,11 +174,13 @@ Features <- R6::R6Class(
                     true.breaks.mat <- cbind(
                         true.breaks.mat, 
                         private$longrange_preparams$true_breaks
+                        # private$kmer_counts$true_breaks
                     )
                     if(!private$regression & private$get_controls){
                         control.breaks.mat <- cbind(
                             control.breaks.mat, 
                             private$longrange_preparams$control_breaks
+                            # private$kmer_counts$control_breaks
                         ) 
                     }
                 }
@@ -188,8 +191,8 @@ Features <- R6::R6Class(
                         private$find_g4_regex(data = "control", g4_type = g4_type)
                     }
 
-                    col.ind <- c("g4seq.counts" = ncol(true.breaks.mat)+1)
-                    private$column_names$G4_REGEX <- "g4seq.counts"
+                    col.ind <- c("G4seq_counts" = ncol(true.breaks.mat)+1)
+                    private$column_names$G4_REGEX <- "G4seq_counts"
                     true.breaks.mat <- cbind(true.breaks.mat, private$g4_regex$true_breaks)
 
                     if(!private$regression & private$get_controls){
@@ -203,25 +206,25 @@ Features <- R6::R6Class(
 
                     col.ind <- c(
                         col.ind,
-                        "gc.content" = ncol(true.breaks.mat)+1,
-                        "gc.skew" = ncol(true.breaks.mat)+2
+                        "GC_content" = ncol(true.breaks.mat)+1,
+                        "GC_skew" = ncol(true.breaks.mat)+2
                     )
-                    private$column_names$GC_CONTENT <- "gc.content"
-                    private$column_names$GC_COUNT <- c("gc.content", "gc.skew")
+                    private$column_names$GC_CONTENT <- "GC_content"
+                    private$column_names$GC_COUNT <- c("GC_content", "GC_skew")
 
                     true.breaks.mat <- cbind(
                         true.breaks.mat,
                         private$gc_content$true_breaks,
-                        private$gc_skew$true_breaks,
-                        private$singleton_content$true_breaks
+                        private$gc_skew$true_breaks
+                        # private$singleton_content$true_breaks
                     )
 
                     if(!private$regression & private$get_controls){
                         control.breaks.mat <- cbind(
                             control.breaks.mat,
                             private$gc_content$control_breaks,
-                            private$gc_skew$control_breaks,
-                            private$singleton_content$control_breaks
+                            private$gc_skew$control_breaks
+                            # private$singleton_content$control_breaks
                         )
                     }
                 }
@@ -308,24 +311,49 @@ Features <- R6::R6Class(
                     predictor <- as.data.table(predictor)
                     predictor <- predictor[, 1]
                     setnames(predictor, "predictor")
-                    predictor <- predictor[, predictor := ifelse(predictor, "YES", "NO")]$predictor
+                    predictor <- predictor[, predictor := ifelse(predictor == 1, "YES", "NO")]$predictor
                 }
                 predictor <- as.factor(predictor)
             }
             feature.mat <- cbind(predictor, feature.mat)
 
             # need to save breakpoint coordinate used for this feature matrix
-            if(!private$regression & private$get_controls){
-                feat.mat.split <- split(feature.mat, predictor)
-                feat.mat.split.no <- feat.mat.split$NO
-                feat.mat.split.yes <- feat.mat.split$YES
-                feat.mat.split.yes.ind <- which(complete.cases(feat.mat.split.yes))
-                feat.mat.split.no.ind <- which(complete.cases(feat.mat.split.no))
+            if(!private$regression){
+                if(private$get_controls){
+                    feat.mat.split <- split(feature.mat, predictor)
+                    feat.mat.split.no <- feat.mat.split$NO
+                    feat.mat.split.yes <- feat.mat.split$YES
+                    feat.mat.split.yes.ind <- which(complete.cases(feat.mat.split.yes))
+                    feat.mat.split.no.ind <- which(complete.cases(feat.mat.split.no))
 
-                ctrl.bp.to.save <- as.data.table(
-                    self$control_breaks[[private$break_score]]$ref[feat.mat.split.no.ind]
-                )
-                ctrl.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)]
+                    ctrl.bp.to.save <- as.data.table(
+                        self$control_breaks[[private$break_score]]$ref[feat.mat.split.no.ind]
+                    )
+                    ctrl.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)]
+                    ctrl.bp.to.save[, Breaks := "NO"]
+
+                    true.bp.to.save <- as.data.table(
+                        self$true_breaks[[private$break_score]]$ref[feat.mat.split.yes.ind]
+                    )
+                    true.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)]
+                    true.bp.to.save[, Breaks := "YES"]
+                } else {
+                    feat.mat.split.yes.ind <- which(feature.mat$predictor == "YES")
+                    true.bp.to.save <- as.data.table(
+                        self$true_breaks[[private$break_score]]$ref[feat.mat.split.yes.ind]
+                    )
+                    true.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)]
+                    true.bp.to.save[, Breaks := NULL]
+                    true.bp.to.save[, Breaks := "YES"]
+                    
+                    feat.mat.split.no.ind <- which(feature.mat$predictor == "NO")
+                    ctrl.bp.to.save <- as.data.table(
+                        self$true_breaks[[private$break_score]]$ref[feat.mat.split.no.ind]
+                    )
+                    ctrl.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)]
+                    ctrl.bp.to.save[, Breaks := NULL]
+                    ctrl.bp.to.save[, Breaks := "NO"]
+                }
                 
                 dir.create(
                     path = "../data/feature_matrix/control_break_locations/",
@@ -341,31 +369,54 @@ Features <- R6::R6Class(
                         ".csv"
                     )
                 )
+
+                dir.create(
+                    path = "../data/feature_matrix/true_break_locations/",
+                    showWarnings = FALSE,
+                    recursive = TRUE
+                )
+                fwrite(
+                    true.bp.to.save,
+                    file = paste0(
+                        "../data/feature_matrix/true_break_locations/",
+                        private$exp, "_kmer-", self$k, "_seed-", self$seed, "_",
+                        ifelse(private$break_score_all, "all", private$break_score), 
+                        ".csv"
+                    )
+                )
+
+                self$true_bp_table <- rbind(true.bp.to.save, ctrl.bp.to.save)
             } else {
                 feat.mat.split.yes.ind <- which(complete.cases(feature.mat))
-            }
-            true.bp.to.save <- as.data.table(
-                self$true_breaks[[private$break_score]]$ref[feat.mat.split.yes.ind]
-            )
-            true.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)] 
-            self$true_bp_table <- true.bp.to.save
-            dir.create(
-                path = "../data/feature_matrix/true_break_locations/",
-                showWarnings = FALSE,
-                recursive = TRUE
-            )
-            fwrite(
-                true.bp.to.save,
-                file = paste0(
-                    "../data/feature_matrix/true_break_locations/",
-                    private$exp, "_kmer-", self$k, "_seed-", self$seed, "_",
-                    ifelse(private$break_score_all, "all", private$break_score), 
-                    ".csv"
+             
+                true.bp.to.save <- as.data.table(
+                    self$true_breaks[[private$break_score]]$ref[feat.mat.split.yes.ind]
                 )
-            )
+                true.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)] 
+                self$true_bp_table <- true.bp.to.save
 
+                dir.create(
+                    path = "../data/feature_matrix/true_break_locations/",
+                    showWarnings = FALSE,
+                    recursive = TRUE
+                )
+                fwrite(
+                    true.bp.to.save,
+                    file = paste0(
+                        "../data/feature_matrix/true_break_locations/",
+                        private$exp, "_kmer-", self$k, "_seed-", self$seed, "_",
+                        ifelse(private$break_score_all, "all", private$break_score), 
+                        ".csv"
+                    )
+                )
+            }
+    
             if(private$regression | !private$get_controls){
-                self$feature_matrix <- feature.mat[feat.mat.split.yes.ind]
+                if(private$regression){
+                    self$feature_matrix <- feature.mat[feat.mat.split.yes.ind]
+                } else {
+                    self$feature_matrix <- feature.mat
+                }
             } else {
                 feat.mat.split.yes <- feat.mat.split.yes[feat.mat.split.yes.ind]
                 feat.mat.split.no <- feat.mat.split.no[feat.mat.split.no.ind]
@@ -849,20 +900,14 @@ Features <- R6::R6Class(
                 "Encoding rolling k-mer position within control regions"
             )
             l <- paste0(rep(".", 70-nchar(cur.msg)), collapse = "")
-            cat(paste0(cur.msg, l))
 
             datatable.seq <- switch(data,
-                "breaks" = Biostrings::getSeq(
-                    private$ref, 
-                    self$true_breaks_expanded$long_range
-                ),
-                "control" = Biostrings::getSeq(
-                    private$ref, 
-                    self$control_breaks_expanded$long_range
-                )
+                "breaks" = private$datatable_seq$long_range$breaks,
+                "control" = private$datatable_seq$long_range$control
             )
 
             # normalise by experiment
+            private$get_extended_querytable(kmer_size = private$kmer_window)
             category_col <- private$extended_preparam_table[, "category"]
             preparam.table <- apply(
                 private$extended_preparam_table[, -"category"], 1, 
@@ -871,68 +916,63 @@ Features <- R6::R6Class(
             preparam.table <- as.data.table(t(preparam.table))
             setnames(preparam.table, private$kmer_list)
             preparam.table <- cbind(category_col, preparam.table)
-            preparam.vector <- as.numeric(colSums(preparam.table[, -"category"]))
-
-            # end position of each k-mer
-            stops <- (width(datatable.seq[1])-private$kmer_window+1)
+            preparam.vector <- as.numeric(colSums(preparam.table[, -"category"])) 
 
             # extract kmers
-            norm_zscore_function <- function(
-                i, datatable_seq, kmer_window, kmer_list, preparam_vector
-                ){
-                kmers_extracted <- subseq(
-                    datatable_seq,
-                    start = i, 
-                    end = i + kmer_window - 1
-                )
-
-                # get norm z-scores
-                kmer_ind <- match(paste0(kmers_extracted), kmer_list)
-                norm_zscore <- preparam_vector[kmer_ind]
-
-                # replace NAs with zero
-                norm_zscore[is.na(norm_zscore)] <- 0
+            stops <- (width(datatable.seq[1])-private$kmer_window+1)
+            
+            with_progress({
+                # `stops` is the total number of steps/iterations
+                p <- progressor(steps = stops)
                 
-                # # k-mer index map
-                # kmers_extracted <- get_kmer_indices(
-                #     private$kmer_list, 
-                #     paste0(kmers_extracted) # this is the bottleneck
-                # )
+                norm_zscore_function <- function(
+                    i, datatable_seq, kmer_window, 
+                    kmer_list, preparam_vector, p
+                    ){
+                    # Signal progress at the beginning of each iteration
+                    p()
 
-                # # get norm z-scores
-                # norm_zscore <- preparam.vector[kmers_extracted]
+                    kmers_extracted <- subseq(
+                        datatable_seq,
+                        start = i, 
+                        end = i+kmer_window-1
+                    )
 
-                # # replace NAs with zero
-                # norm_zscore[is.na(norm_zscore)] <- 0
+                    # get norm z-scores
+                    kmer_ind <- match(paste0(kmers_extracted), kmer_list)
 
-                return(norm_zscore)
-            }
+                    # for neural network: one row per sequence
+                    norm_zscore <- preparam_vector[kmer_ind]
 
-            norm_zscore <- furrr::future_map(
-                .x = 1:stops, 
-                .f = norm_zscore_function, 
-                datatable_seq = datatable.seq, 
-                kmer_window = private$kmer_window, 
-                kmer_list = private$kmer_list, 
-                preparam_vector = preparam.vector
-            )
-            norm_zscore_matrix <- do.call(cbind, norm_zscore)
+                    # replace NAs with zero
+                    norm_zscore[is.na(norm_zscore)] <- 0
+                    
+                    # # k-mer index map
+                    # kmers_extracted <- get_kmer_indices(
+                    #     private$kmer_list, 
+                    #     paste0(kmers_extracted) # this is the bottleneck
+                    # )
 
-            # ##################################################################
-            # out = dslabs::read_mnist(
-            #     path = NULL,
-            #     download = FALSE,
-            #     destdir = tempdir(),
-            #     url = "https://www2.harvardx.harvard.edu/courses/IDS_08_v2_03/",
-            #     keep.files = TRUE
-            # )
+                    # # get norm z-scores
+                    # norm_zscore <- preparam.vector[kmers_extracted]
 
-            # x_train = out$train$images
-            # as_tibble(x_train)
+                    # # replace NAs with zero
+                    # norm_zscore[is.na(norm_zscore)] <- 0
 
-            # y_labels = out$train$labels
-            # as_tibble(y_labels)
-            # ##################################################################
+                    return(norm_zscore)
+                }
+
+                norm_zscore <- furrr::future_map(
+                    .x = 1:stops, 
+                    .f = norm_zscore_function, 
+                    datatable_seq = datatable.seq, 
+                    kmer_window = private$kmer_window, 
+                    kmer_list = private$kmer_list, 
+                    preparam_vector = preparam.vector,
+                    p = p  # pass the progressor object to the function
+                )
+                norm_zscore_matrix <- do.call(cbind, norm_zscore)
+            })
 
             if(data == "breaks"){
                 private$sequence_image_encoding$true_breaks <- norm_zscore_matrix
@@ -940,6 +980,7 @@ Features <- R6::R6Class(
                 private$sequence_image_encoding$control_breaks <- norm_zscore_matrix
             }
 
+            cat(paste0(cur.msg, l))
             total.time <- Sys.time() - t1
             cat("DONE! --", signif(total.time[[1]], 2), 
                 attr(total.time, "units"), "\n")
@@ -963,39 +1004,49 @@ Features <- R6::R6Class(
             cat(paste0(cur.msg, l))
 
             datatable.seq <- switch(data,
-                "breaks" = Biostrings::getSeq(
-                    private$ref, 
-                    self$true_breaks_expanded$long_range
-                ),
-                "control" = Biostrings::getSeq(
-                    private$ref, 
-                    self$control_breaks_expanded$long_range
-                )
+                "breaks" = private$datatable_seq$long_range$breaks,
+                "control" = private$datatable_seq$long_range$control
             )
 
-            # import all values from pre-parameterised table
-            preparam.table <- fread(
-                paste0("../data/kmertone/QueryTable/QueryTable_",
-                    "kmer-", private$kmer_window, "_",
-                    private$break_score, ".csv"), 
-                showProgress = FALSE
+            # normalise by experiment
+            private$get_extended_querytable(kmer_size = private$kmer_window)
+            category_col <- private$extended_preparam_table[, "category"]
+            preparam.table <- apply(
+                private$extended_preparam_table[, -"category"], 1, 
+                scale, center = TRUE, scale = TRUE
             )
-
+            
             if(only_breaks){
-                preparam.table <- preparam.table[match(
+                preparam.table <- preparam.table[, match(
                     gsub(
                         pattern = "_zscore$|_ratio$",
                         replacement = "",
                         x = private$column_names$BREAKS
                     ), 
-                    preparam.table$category
+                    category_col$category
                 )]             
             }
-            preparam.mat <- as.matrix(preparam.table[, -"category"])
+            preparam.mat <- as.matrix(preparam.table)
             # require finite numeric values for matrix multiplications
             preparam.mat[is.na(preparam.mat)] <- 0
             preparam.mat[is.infinite(preparam.mat)] <- 0
-            preparam.mat.transpose <- t(preparam.mat)
+
+            # # count rolling-window k-mers
+            # kmer.counts.all <- Biostrings::oligonucleotideFrequency(
+            #     x = datatable.seq,
+            #     width = private$kmer_window,
+            #     step = 1
+            # )
+            # all.kmers <- colnames(kmer.counts.all)
+            # fwd.ind <- match(private$kmer_ref$kmer, all.kmers)
+            # rev.ind <- match(private$kmer_ref$rev.comp, all.kmers)
+            # kmer.counts.all <- kmer.counts.all[, fwd.ind]+kmer.counts.all[, rev.ind]
+
+            # # matrix multiply only first lexicologically occurring kmers
+            # first.lex.kmer <- 1:nrow(private$kmer_ref)
+            # preparam.mat <- preparam.mat[first.lex.kmer, ]
+            # kmer.counts.all <- eigenMatrixMultiply(kmer.counts.all, preparam.mat)
+            # colnames(kmer.counts.all) <- paste0(category_col$category, "_LR_sum")
 
             #' 1. get rolling k-mers in sliding window size of 1 bp
             # for some reason, the oligonucleotideFrequency function
@@ -1003,14 +1054,16 @@ Features <- R6::R6Class(
             # sequences. To be safe, I do it in chunks
             datatable.seq.split <- split(
                 datatable.seq, 
-                ceiling(seq_along(datatable.seq)/10000)
+                ceiling(seq_along(datatable.seq)/500000)
             )
 
+            # only keep first lexicologically occurring k-mer
             fwd.ind <- match(private$kmer_ref$kmer, private$kmer_list)
             rev.ind <- match(private$kmer_ref$rev.comp, private$kmer_list)
             first.lex.kmer <- 1:nrow(private$kmer_ref)
-            
-            kmer.counts <- pbapply::pblapply(1:length(datatable.seq.split), function(x){
+            preparam.mat <- preparam.mat[first.lex.kmer, ]
+
+            kmer.counts <- lapply(1:length(datatable.seq.split), function(x){
                 kmer.counts <- Biostrings::oligonucleotideFrequency(
                     x = datatable.seq.split[[x]], 
                     width = private$kmer_window,
@@ -1023,18 +1076,27 @@ Features <- R6::R6Class(
                 # only keep first lexicologically occurring k-mer            
                 kmer.counts <- kmer.counts[, first.lex.kmer]
 
-                #' 2. match k-mers with the pre-parameterised table
+                #'Match k-mers with the pre-parameterised table
                 # The matrix multiplication is the # of times a given 
                 # k-mer per sample came up, and multiplied by the 
                 # corresponding k-mer in the preparam table per sample.
                 # Thus, the final value is simply a summed k-meric enrichment z-score.
                 # output format: samples (rows) vs. breakage source (cols)
-                # kmer.enrich.all <- kmer.counts %*% preparam.mat.transpose
-                kmer.enrich.all <- eigenMatrixMultiply(kmer.counts, preparam.mat.transpose)
+
+                kmer.enrich.all <- eigenMatrixMultiply(kmer.counts, preparam.mat)
                 return(kmer.enrich.all)
             })
+
+            # kmer.counts.all <- sapply(kmer.counts, `[[`, 2)
+            # kmer.counts <- sapply(kmer.counts, `[[`, 1)
+            
+            # long-range breakage z-scores
+            # kmer.counts.all <- do.call(rbind, kmer.counts.all)
             kmer.counts.all <- do.call(rbind, kmer.counts)
-            colnames(kmer.counts.all) <- paste0(preparam.table$category, "_LR_sum")
+            colnames(kmer.counts.all) <- paste0(category_col$category, "_LR_sum")
+
+            # # long-range k-mer counts
+            # kmer.counts <- do.call(rbind, kmer.counts)
 
             # filter for non-zero k-mer occurrences
             kmer.counts.all[is.na(kmer.counts.all)] <- 0
@@ -1043,13 +1105,17 @@ Features <- R6::R6Class(
             if(data == "breaks"){
                 private$longrange_preparams$true_breaks <- kmer.counts.all
                 private$column_names$LONGRANGE_PREPARAMS <- colnames(kmer.counts.all)
+
+                # private$kmer_counts$true_breaks <- kmer.counts
+                # private$column_names$KMER_COUNTS <- colnames(kmer.counts)
             } else if(data == "control"){
                 private$longrange_preparams$control_breaks <- kmer.counts.all
+                # private$kmer_counts$control_breaks <- kmer.counts
             }
 
             total.time <- Sys.time() - t1
-            # cat("DONE! --", signif(total.time[[1]], 2), 
-            #     attr(total.time, "units"), "\n")
+            cat("DONE! --", signif(total.time[[1]], 2), 
+                attr(total.time, "units"), "\n")
         },        
 
         #' @description 
@@ -1069,14 +1135,8 @@ Features <- R6::R6Class(
             cat(paste0(cur.msg, l))
 
             datatable.seq <- switch(data,
-                "breaks" = Biostrings::getSeq(
-                    private$ref, 
-                    self$true_breaks_expanded$mid_range
-                ),
-                "control" = Biostrings::getSeq(
-                    private$ref, 
-                    self$control_breaks_expanded$mid_range
-                )
+                "breaks" = private$datatable_seq$mid_range$breaks,
+                "control" = private$datatable_seq$mid_range$control
             )
             datatable.seq <- paste0(datatable.seq)
 
@@ -1131,13 +1191,15 @@ Features <- R6::R6Class(
             cat(paste0(cur.msg, l))
 
             datatable.seq <- switch(data,
-                "breaks" = Biostrings::getSeq(private$ref, self$true_breaks_expanded$long_range),
-                "control" = Biostrings::getSeq(private$ref, self$control_breaks_expanded$long_range)
+                "breaks" = private$datatable_seq$long_range$breaks,
+                "control" = private$datatable_seq$long_range$control
             )
             genome.len <- width(datatable.seq)
 
             # count base frequencies
-            letter.counts <- Biostrings::letterFrequency(datatable.seq, letters = "ACGT", OR = 0)
+            letter.counts <- Biostrings::letterFrequency(
+                datatable.seq, letters = "ACGT", OR = 0
+            )
             letter.counts.norm <- letter.counts/genome.len
             gc.content <- letter.counts.norm[, "G"]+letter.counts.norm[, "C"]
             g.minus.c <- letter.counts.norm[, "G"]-letter.counts.norm[, "C"]
@@ -1188,13 +1250,18 @@ Features <- R6::R6Class(
                 datatable.seq <- Biostrings::getSeq(private$ref, expand.breaks.into.kmers)
             } else {
                 datatable.seq <- switch(data,
-                    "breaks" = Biostrings::getSeq(private$ref, self$true_breaks_expanded$long_range),
-                    "control" = Biostrings::getSeq(private$ref, self$control_breaks_expanded$long_range)
+                    "breaks" = private$datatable_seq$long_range$breaks,
+                    "control" = private$datatable_seq$long_range$control
                 )
             }
 
-            kmer.counts <- Biostrings::oligonucleotideFrequency(datatable.seq, private$kmer_window)
-            all.kmers <- colnames(kmer.counts) 
+            private$generate_kmer_table()
+            kmer.counts <- Biostrings::oligonucleotideFrequency(
+                x = datatable.seq, 
+                width = private$kmer_window,
+                step = 1
+            )
+            all.kmers <- colnames(kmer.counts)
             fwd.ind <- match(private$kmer_ref$kmer, all.kmers)
             rev.ind <- match(private$kmer_ref$rev.comp, all.kmers)
             kmer.counts <- kmer.counts[, fwd.ind]+kmer.counts[, rev.ind]
@@ -1205,6 +1272,38 @@ Features <- R6::R6Class(
             } else {
                 private$kmer_counts$control_breaks <- kmer.counts
             }
+
+            # datatable.seq.split <- split(
+            #     datatable.seq, 
+            #     ceiling(seq_along(datatable.seq)/10000)
+            # )
+
+            # # only keep first lexicologically occurring k-mer
+            # fwd.ind <- match(private$kmer_ref$kmer, private$kmer_list)
+            # rev.ind <- match(private$kmer_ref$rev.comp, private$kmer_list)
+            # first.lex.kmer <- 1:nrow(private$kmer_ref)
+            
+            # kmer.counts <- pbapply::pblapply(1:length(datatable.seq.split), function(x){
+            #     kmer.counts <- Biostrings::oligonucleotideFrequency(
+            #         x = datatable.seq.split[[x]],
+            #         width = private$kmer_window
+            #     )
+                
+            #     # count occurrence on minus strands
+            #     kmer.counts <- kmer.counts[, fwd.ind]+kmer.counts[, rev.ind]
+
+            #     # only keep first lexicologically occurring k-mer            
+            #     kmer.counts <- kmer.counts[, first.lex.kmer]
+            #     return(kmer.counts)
+            # })
+            # kmer.counts.all <- do.call(rbind, kmer.counts)
+
+            # if(data == "breaks"){
+            #     private$kmer_counts$true_breaks <- kmer.counts.all
+            #     private$column_names$KMER_COUNTS <- colnames(kmer.counts.all)
+            # } else {
+            #     private$kmer_counts$control_breaks <- kmer.counts.all
+            # }
 
             total.time <- Sys.time() - t1
             cat("DONE! --", signif(total.time[[1]], 2), 
@@ -1229,8 +1328,8 @@ Features <- R6::R6Class(
             cat(paste0(cur.msg, l))
 
             datatable.seq <- switch(data,
-                "breaks" = Biostrings::getSeq(private$ref, self$true_breaks_expanded$mid_range),
-                "control" = Biostrings::getSeq(private$ref, self$control_breaks_expanded$mid_range)
+                "breaks" = private$datatable_seq$mid_range$breaks,
+                "control" = private$datatable_seq$mid_range$control
             )
 
             #' @description
