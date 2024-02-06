@@ -1,11 +1,17 @@
 Breakpoints <- R6::R6Class(
     classname = "Breakpoints",
     public = list(
+        #' @field label Character vector of the species label.
+        label = NULL,
+
         #' @field k Numeric vector of k-mer size.
         k = 8,
 
         #' @field bp_dir Numeric vector to fix the seed.
         seed = 1234,
+
+        #' @field df_bp Data.table of positions to extract.
+        df_bp = NULL,
 
         #' @field true_breaks GRanges of true breakpoints.
         true_breaks = NULL,
@@ -13,52 +19,28 @@ Breakpoints <- R6::R6Class(
         #' @field true_breaks_expanded GRanges list of break ranges.
         true_breaks_expanded = NULL,
 
-        #' @field control_breaks GRanges of control breakpoints.
-        control_breaks = NULL,
-
-        #' @field control_breaks_expanded GRanges list of break ranges.
-        control_breaks_expanded = NULL,
-
         #' @field out Numeric vector. If -1, skips to the next chunk of the sequence for analysis. 
         out = 1,
 
-        initialize = function(k, exp, seed, scores_with_kmers, true_prop,
-                              assembly, break_score, break_score_all){
+        initialize = function(fasta_sequence, label, k, seed, break_score, df_bp){
+            if(!missing(fasta_sequence)) private$ref <- fasta_sequence
+            if(!missing(label)) self$label <- label
             if(!missing(k)) self$k <- k
-            if(!missing(exp)) private$bp_dir <- paste0("../data/experiments/", exp)
             if(!missing(seed)) self$seed <- seed
-            if(!missing(scores_with_kmers)) private$scores_with_kmers <- scores_with_kmers
-            if(!missing(true_prop)) private$true_prop <- true_prop
-            if(private$true_prop <= 0.1) stop("Too few true breakpoint samples!")
-            
-            # get reference sequence
-            assembly <- ifelse(is.null(assembly), "hg19", assembly)
-            private$get_ref_seq(assembly)
-
             if(!missing(break_score)) private$break_score <- break_score
-            private$break_score_all <- ifelse(private$break_score == "all", TRUE, FALSE)
-        },
-
-        #' @description
-        #'  Extend table to have all k-mers not just lexicographically occurring ones.
-        #' @return Data table of the query table.
-        get_extended_tables = function(){
-            for(kmer in c(2,4,6,8)){
-                private$kmer_window <- kmer
-                private$get_extended_querytable(kmer_size = private$kmer_window)
-            }
+            if(!missing(df_bp)) self$df_bp <- df_bp
         },
 
         #' @description
         #' Function extracts true and control breakpoints.
-        #' @param break_type Character vector of any of c("biological", "enzymatic", "high_frequency"). 
+        #' @param break_type Character vector of any of c("Biological", "Enzymatic", "High_frequency").  
         #'  If user knows the type of breakage but does not have any range effect values, the maximum
         #'  range effect cross similar types of breakages will be taken. If no type is given, user 
         #'  has to input 3 range effects into the ranges parameter.
         #' @param ranges Numeric vector of length 3, where position 1 is the short range effect, 
         #'  position 2 is the medium range effect, and position 3 is the long range effect.
         #' @return None.
-        get_breaks = function(break_type = "biological", ranges = NULL){
+        get_breaks = function(break_type = "Biological", ranges = NULL){
             # get range cutoffs
             private$get_ranges(break_type = break_type, ranges = ranges)
 
@@ -77,16 +59,6 @@ Breakpoints <- R6::R6Class(
 
                 # extract the true breakpoint locations
                 private$get_true_breaks()
-
-                # sample control breakpoints from control breakpoint regions
-                if(!private$regression & private$get_controls){
-                    private$get_control_breaks()
-                    private$get_break_scores(type = "controls")
-                }
-
-                # as size of control breakpoints is much smaller than the true breakpoints,
-                # after sub-sampling true breakpoints to reach an approximate balance bewteen true
-                # and control breakpoint populations, only then we calculate the breakpoint scores
                 private$get_break_scores(type = "breaks")
                 if(self$out == -1) return(-1)
             }
@@ -108,35 +80,14 @@ Breakpoints <- R6::R6Class(
         
     ),
     private = list(
-        #' @field bp_dir Character vector of directory containing breakpoints.
-        bp_dir = NULL,
-
         #' @field ranges Numeric vector of upper limit of the short, mid and long ranges.
         ranges = NULL,
 
         #' @field break_score Character vector of "zscore" or "ratios".
         break_score = NULL,
 
-        #' @field true_prop Numeric vector. The proportion of true breakpoint samples
-        #'  compared to the control breakpoint samples. By default, will sample 
-        #'  110% of the control breakpoints to have a slight shift 
-        #'  towards true breakpoints. 
-        true_prop = 1,       
-
-        #' @field break_score_all Boolean. If TRUE, extract both "zscore" and "ratios".
-        break_score_all = FALSE,
-
-        #' @field scores_with_kmers Boolean. If TRUE, breakage scores return with k-mer col.
-        scores_with_kmers = FALSE,
-
         #' @field ref BSgenome reference genome assembly.
         ref = NULL,
-
-        #' @field chrs_len Numeric vector of the length of each chromosome of the reference sequence.
-        chrs_len = NULL,
-
-        #' @field which_chr Numeric vector. Specify which chromosome to work with, default are autosomes.
-        which_chr = 1:22,
 
         #' @field kmer_window Numeric vector of the window size for counting k-mers.
         kmer_window = NULL,
@@ -154,44 +105,23 @@ Breakpoints <- R6::R6Class(
         datatable_seq = NULL,
 
         #' @description 
-        #' Extract reference sequence.
-        #' @param assembly Character Vector of genome assembly versions. 
-        #' @return None.
-        get_ref_seq = function(assembly){
-            private$ref <- switch(assembly,
-                "hg18" = BSgenome.Hsapiens.UCSC.hg18::BSgenome.Hsapiens.UCSC.hg18,
-                "hg19" = BSgenome.Hsapiens.UCSC.hg19::BSgenome.Hsapiens.UCSC.hg19,
-                "hg38" = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38,
-                "hs37d5" = BSgenome.Hsapiens.1000genomes.hs37d5::BSgenome.Hsapiens.1000genomes.hs37d5
-            )
-
-            # get the start and end positions of each chromosome
-            refseq.table <- as.data.frame(private$ref@seqinfo)
-            refseq.table <- refseq.table[grepl(
-                pattern = "^chr([1-9]|1[0-9]|2[0-2])$", 
-                x = rownames(refseq.table)
-            ),]
-            private$chrs_len <- refseq.table$seqlengths            
-            private$chrs_len <- setNames(private$chrs_len, rownames(refseq.table))
-        },
-
-        #' @description 
         #' Extracts the short, mid and long-range upper limits around the central breakpoint.
-        #' @param break_type Character vector of any of c("biological", "enzymatic", "high_frequency"). 
+        #' @param break_type Character vector of any of c("Biological", "Enzymatic", "High_frequency"). 
         #'  If user knows the type of breakage but does not have any range effect values, the maximum
         #'  range effect cross similar types of breakages will be taken. If no type is given, user 
         #'  has to input 3 range effects into the ranges parameter.
         #' @param ranges Numeric vector of length 3, where position 1 is the short range effect, 
         #'  position 2 is the medium range effect, and position 3 is the long range effect.
         #' @return None.
-        get_ranges = function(break_type = "biological", ranges = NULL){
+        get_ranges = function(break_type = "Biological", ranges = NULL){
             round_to_nearest_even <- function(x) round(x/2)*2
 
             if(!is.null(ranges)){
+                ranges <- unname(ranges)
                 all.ranges <- list(
-                    short.range = ranges[1],
-                    mid.range = ranges[2],
-                    long.range = ranges[3]                    
+                    short = min(ranges),
+                    medium = median(ranges),
+                    long = max(ranges)
                 )
             } else {
                 datatable <- fread(paste0(
@@ -200,17 +130,17 @@ Breakpoints <- R6::R6Class(
                 ))
 
                 # extract each range
-                row.id <- which(datatable$type == break_type)
-                all.ranges <- datatable[row.id,-"type"]
+                row.id <- which(datatable$break_type == break_type)
+                all.ranges <- datatable[row.id, -"break_type"]
                 all.ranges <- as.list(all.ranges)
             }
 
             # round to the nearest even number
             all.ranges <- lapply(all.ranges, round_to_nearest_even)
 
-            private$ranges$short_range <- all.ranges$short.range
-            private$ranges$mid_range <- all.ranges$mid.range
-            private$ranges$long_range <- all.ranges$long.range            
+            private$ranges$short_range <- all.ranges$short
+            private$ranges$mid_range <- all.ranges$medium
+            private$ranges$long_range <- all.ranges$long
         },
 
         #' @description 
@@ -239,7 +169,7 @@ Breakpoints <- R6::R6Class(
         #'  Extend table to have all k-mers not just lexicographically occurring ones.
         #' @param kmer_size Numeric vector. Size of the k-mer. 
         #' @return Data table of the query table.
-        get_extended_querytable = function(kmer_size){
+        get_extended_querytable = function(kmer_size, custom_cols = TRUE){
             # progress message
             t1 <- Sys.time()
             cur.msg <- "Retrieving table of breakage parameters"
@@ -302,6 +232,18 @@ Breakpoints <- R6::R6Class(
                     check.file,
                     showProgress = FALSE
                 )
+
+                if(private$only_breaks){
+                    tfbs.ind <- which(!grepl(pattern = "^TFBS_", private$extended_preparam_table$category))
+                    private$extended_preparam_table <- private$extended_preparam_table[tfbs.ind,]
+
+                    # epigenome marks
+                    epigenome.ind <- which(!grepl(
+                        pattern = "Epigenome|ATACseq|Chipseq|Dnaseseq|FAIREseq", 
+                        private$extended_preparam_table$category
+                    ))
+                    private$extended_preparam_table <- private$extended_preparam_table[epigenome.ind,]
+                }
             } else {
                 private$generate_kmer_table()
 
@@ -313,6 +255,20 @@ Breakpoints <- R6::R6Class(
                     showProgress = FALSE
                 )
                 category_col <- preparam.table[, "category"]
+
+                if(private$only_breaks){
+                    cols_to_rm <- !grepl(
+                        pattern = paste0(
+                            "^TFBS_|^Epigenome|^ATACseq|",
+                            "^Chipseq|^Dnaseseq|^FAIREseq"
+                        ),
+                        x = category_col$category,
+                        ignore.case = TRUE
+                    )
+                    category_col <- category_col[cols_to_rm,]
+                    preparam.table <- preparam.table[cols_to_rm,]
+                }
+
                 res <- lapply(preparam.table$category, function(b){
                     extend_querytable(
                         dat = preparam.table, 
@@ -349,25 +305,11 @@ Breakpoints <- R6::R6Class(
             l <- paste0(rep(".", 70-nchar(cur.msg)), collapse = "")
             cat(paste0(cur.msg, l))
 
-            bp.folder <- paste0(private$bp_dir, "/breakpoint_positions/chr")
+            datatable <- self$df_bp
+            datatable[, `:=`(seqnames = self$label, width = 2)]
+            setnames(datatable, c("start", "seqnames", "width"))
+            datatable[, start.pos := start]
 
-            # get breakpoints for each chromosome
-            datatable <- lapply(private$which_chr, function(chr){
-                datatable <- fread(
-                    paste0(bp.folder, chr, ".csv"), 
-                    showProgress = FALSE
-                )
-                if("freq" %in% colnames(datatable)){
-                    datatable[, `:=`(lev.dist = NULL, freq = NULL)]
-                }
-                
-                to_rename <- which(grepl(pattern = "start", x = colnames(datatable)))
-                colnames(datatable)[to_rename] <- "start"
-
-                datatable[, `:=`(width = 2, seqnames = paste0("chr", chr))]
-                return(datatable)
-            }) 
-            datatable <- rbindlist(datatable)
             self$true_breaks[[private$break_score]]$ref <- plyranges::as_granges(datatable)
             
             # expand breakpoint into k-mer
@@ -375,170 +317,7 @@ Breakpoints <- R6::R6Class(
                 plyranges::anchor_center(self$true_breaks[[private$break_score]]$ref), 
                 self$k-2
             )
-
-            # discard any out-of-bounds ranges
-            check.longrange <- plyranges::stretch(
-                plyranges::anchor_center(self$true_breaks[[private$break_score]]$ref), 
-                private$ranges$long_range-1
-            )
-            to.keep <- which(start(check.longrange) > 0)
-
-            # change end-position if out of bounds
-            col_names <- colnames(as.data.table(check.longrange))
-            if(private$regression | "Breaks" %in% col_names){
-                any_oob <- check.longrange %>% 
-                    as_tibble() %>% 
-                    dplyr::mutate(
-                        seqnames = as.character(seqnames),
-                        max_end = as.numeric(private$chrs_len[seqnames])
-                    ) %>% 
-                    dplyr::mutate(
-                        any_oob = ifelse(start > 0 & end <= max_end, FALSE, TRUE)
-                    ) %>% 
-                    dplyr::pull(any_oob)
-                to.keep <- which(!any_oob)
-            }
-            self$true_breaks[[private$break_score]]$kmer <- 
-                self$true_breaks[[private$break_score]]$kmer[to.keep]
-            self$true_breaks[[private$break_score]]$ref <- 
-                self$true_breaks[[private$break_score]]$ref[to.keep]
-
-            # # remove sequences that have Ns within the long_range span
-            # check.longrange <- plyranges::stretch(
-            #     plyranges::anchor_center(
-            #         self$true_breaks[[private$break_score]]$ref
-            #     ), 
-            #     private$ranges$long_range-1
-            # )
-            # check.longrange <- Biostrings::getSeq(
-            #     private$ref, 
-            #     check.longrange
-            # )
-            # to.keep <- which(!grepl(pattern = "N", x = check.longrange))
-            # self$true_breaks[[private$break_score]]$kmer <- 
-            #     self$true_breaks[[private$break_score]]$kmer[to.keep]
-            # self$true_breaks[[private$break_score]]$ref <- 
-            #     self$true_breaks[[private$break_score]]$ref[to.keep]
             
-            total.time <- Sys.time() - t1
-            cat("DONE! --", signif(total.time[[1]], 2), 
-                attr(total.time, "units"), "\n")
-        },
-
-        #' @description 
-        #' Extracts control breakpoint locations.
-        #' @return None.
-        get_control_breaks = function(){
-            # progress message
-            t1 <- Sys.time()
-            cur.msg <- "Sampling control breakpoints"
-            l <- paste0(rep(".", 70-nchar(cur.msg)), collapse = "")
-            cat(paste0(cur.msg, l))
-
-            # extract control regions
-            control.folder <- paste0(private$bp_dir, "/control_coordinates/chr")
-
-            # get breakpoints for each chromosome
-            datatable <- lapply(private$which_chr, function(chr){
-                datatable <- fread(
-                    paste0(control.folder, chr, ".csv"), 
-                    showProgress = FALSE
-                )
-                datatable[, seqnames := paste0("chr", chr)]
-                return(datatable)
-            })
-            datatable <- rbindlist(datatable)
-            datatable <- plyranges::as_granges(datatable)
-
-            # sample rows proportional to width
-            to.sample.max <- length(self$true_breaks[[private$break_score]]$ref)
-            set.seed(self$seed)
-            sample.rows <- sample(length(datatable), size = to.sample.max, 
-                                  replace = TRUE, prob = width(datatable))
-            sample.rows <- datatable[sample.rows]
-
-            # sample within each chosen range
-            sample.rows <- as.data.table(sample.rows)
-            sample.rows[, position := sample(start:end, size = 1, replace = FALSE), 
-                        by = 1:dim(sample.rows)[1]]
-            sample.rows[, start := position]
-            sample.rows[, end := position+1]
-            sample.rows[, c("width", "strand", "position") := NULL]
-            datatable <- plyranges::as_granges(sample.rows)
-
-            # extract mid-range distance of true breakpoint locations
-            true.bp.expanded <- plyranges::stretch(
-                plyranges::anchor_center(self$true_breaks[[private$break_score]]$ref), 
-                private$ranges$long_range
-            )
-
-            # exclude non-overlapping control breakpoints from expanded true breakpoint regions
-            control.bp.expanded <- plyranges::stretch(
-                plyranges::anchor_center(datatable), 
-                private$ranges$long_range
-            )
-
-            control.bp.expanded <- plyranges::filter_by_non_overlaps(
-                control.bp.expanded, 
-                true.bp.expanded
-            )            
-
-            # shift expanded control breakpoints back into original 2-base breakpoint location
-            datatable <- plyranges::shift_right(plyranges::stretch(
-                plyranges::anchor_center(control.bp.expanded), 
-                -private$ranges$long_range
-            ), shift = 1L)
-            datatable <- arrange(datatable, seqnames, start)
-            datatable <- unique(datatable)
-
-            # expand control breakpoint into k-mer
-            self$control_breaks[[private$break_score]]$ref <- datatable
-            self$control_breaks[[private$break_score]]$kmer <- plyranges::stretch(
-                plyranges::anchor_center(self$control_breaks[[private$break_score]]$ref), 
-                self$k-2
-            )
-
-            # discard any out-of-bounds ranges
-            check.longrange <- plyranges::stretch(
-                plyranges::anchor_center(self$control_breaks[[private$break_score]]$ref), 
-                private$ranges$long_range-1
-            )
-
-            to.keep <- sapply(paste0("chr", private$which_chr), function(chrs){
-                return(match(filter(check.longrange, 
-                    seqnames == chrs & start > 0 & end <= private$chrs_len[[chrs]]),
-                    check.longrange
-                ))
-            }, USE.NAMES = FALSE)
-            to.keep <- unlist(to.keep)
-
-            self$control_breaks[[private$break_score]]$kmer <- 
-                self$control_breaks[[private$break_score]]$kmer[to.keep]
-            self$control_breaks[[private$break_score]]$ref <- 
-                self$control_breaks[[private$break_score]]$ref[to.keep]
-
-            # randomly sample subset of true breakpoints to 
-            # achieve a balance of true and control breakpoints.
-            # Optionally, can create an imbalance for crash test demonstrations.
-            true.bp <- self$true_breaks[[private$break_score]]$ref
-            to.sample.max <- length(
-                self$control_breaks[[private$break_score]]$ref
-            )*private$true_prop
-
-            set.seed(self$seed)
-            sample.rows <- sample(length(true.bp), size = to.sample.max, 
-                                  replace = TRUE, prob = width(true.bp))
-            sample.rows <- true.bp[sample.rows]
-            true.bp <- arrange(sample.rows, seqnames, start)
-            true.bp <- unique(true.bp)
-            
-            # expand control breakpoint into k-mer
-            self$true_breaks[[private$break_score]]$ref <- true.bp
-            self$true_breaks[[private$break_score]]$kmer <- plyranges::stretch(
-                plyranges::anchor_center(self$true_breaks[[private$break_score]]$ref), 
-                self$k-2
-            )
-
             total.time <- Sys.time() - t1
             cat("DONE! --", signif(total.time[[1]], 2), 
                 attr(total.time, "units"), "\n")
@@ -577,7 +356,7 @@ Breakpoints <- R6::R6Class(
             datatable <- private$extended_preparam_table[, -"category"]
 
             # get sequences of k-mer breakages
-            datatable.seq <- Biostrings::getSeq(private$ref, data)
+            datatable.seq <- BSgenome::getSeq(private$ref, data)
 
             # check if all NAs or not
             any_non_nas <- which(!grepl(pattern = "N", x = datatable.seq))
@@ -597,38 +376,19 @@ Breakpoints <- R6::R6Class(
             datatable.kmer <- data[!to.remove]
             datatable.ref <- ref.data[!to.remove]
 
-            # extract columns based on k-mer matches
-            if(private$scores_with_kmers){
-                datatable <- datatable[, ..match.kmers]
-                rownames(datatable) <- datatable.category
-                datatable <- t(datatable)
-                datatable <- data.table(
-                    kmer = rownames(datatable),
-                    scores = datatable
-                )
-                setnames(datatable, c("kmer", datatable.category))
-            } else {
-                datatable <- as.matrix(datatable[, ..match.kmers])
-                colnames(datatable) <- NULL
-                rownames(datatable) <- datatable.category
-            }
+            # re-format data
+            datatable <- as.matrix(datatable[, ..match.kmers])
+            colnames(datatable) <- NULL
+            rownames(datatable) <- datatable.category
 
             if(type == "breaks"){
                 self$true_breaks[[private$break_score]]$ref <- datatable.ref
                 self$true_breaks[[private$break_score]]$kmer <- datatable.kmer
-                if(private$scores_with_kmers){
-                    self$true_breaks[[private$break_score]]$scores <- datatable
-                } else {
-                    self$true_breaks[[private$break_score]]$scores <- t(datatable)
-                }
+                self$true_breaks[[private$break_score]]$scores <- t(datatable)
             } else if(type == "controls"){
                 self$control_breaks[[private$break_score]]$ref <- datatable.ref
                 self$control_breaks[[private$break_score]]$kmer <- datatable.kmer
-                if(private$scores_with_kmers){
-                    self$control_breaks[[private$break_score]]$scores <- datatable
-                } else {
-                    self$control_breaks[[private$break_score]]$scores <- t(datatable)
-                }
+                self$control_breaks[[private$break_score]]$scores <- t(datatable)
             }
 
             total.time <- Sys.time() - t1
@@ -649,25 +409,25 @@ Breakpoints <- R6::R6Class(
             # true breakpoints
             self$true_breaks_expanded$short_range <- plyranges::stretch(
                 plyranges::anchor_center(self$true_breaks[[private$break_score]]$ref), 
-                private$ranges$short_range-1
+                private$ranges$short_range-2
             )
 
             self$true_breaks_expanded$mid_range <- plyranges::stretch(
                 plyranges::anchor_center(self$true_breaks[[private$break_score]]$ref), 
-                private$ranges$mid_range-1
+                private$ranges$mid_range-2
             )
 
-            private$datatable_seq$mid_range$breaks <- Biostrings::getSeq(
+            private$datatable_seq$mid_range$breaks <- BSgenome::getSeq(
                 private$ref, 
                 self$true_breaks_expanded$mid_range
             )
 
             self$true_breaks_expanded$long_range <- plyranges::stretch(
                 plyranges::anchor_center(self$true_breaks[[private$break_score]]$ref), 
-                private$ranges$long_range-1
+                private$ranges$long_range-2
             )
 
-            private$datatable_seq$long_range$breaks <- Biostrings::getSeq(
+            private$datatable_seq$long_range$breaks <- BSgenome::getSeq(
                 private$ref, 
                 self$true_breaks_expanded$long_range
             )
@@ -676,22 +436,22 @@ Breakpoints <- R6::R6Class(
             if(!private$regression & private$get_controls){
                 self$control_breaks_expanded$short_range <- plyranges::stretch(
                     plyranges::anchor_center(self$control_breaks[[private$break_score]]$ref), 
-                    private$ranges$short_range-1
+                    private$ranges$short_range-2
                 )
 
                 self$control_breaks_expanded$mid_range <- plyranges::stretch(
                     plyranges::anchor_center(self$control_breaks[[private$break_score]]$ref), 
-                    private$ranges$mid_range-1
+                    private$ranges$mid_range-2
                 )
 
-                private$datatable_seq$mid_range$control <- Biostrings::getSeq(
+                private$datatable_seq$mid_range$control <- BSgenome::getSeq(
                     private$ref, 
                     self$control_breaks_expanded$mid_range
                 )
 
                 self$control_breaks_expanded$long_range <- plyranges::stretch(
                     plyranges::anchor_center(self$control_breaks[[private$break_score]]$ref), 
-                    private$ranges$long_range-1
+                    private$ranges$long_range-2
                 )
 
                 # change end-position if out of bounds
@@ -710,7 +470,7 @@ Breakpoints <- R6::R6Class(
                         plyranges::as_granges()
                 }
 
-                private$datatable_seq$long_range$control <- Biostrings::getSeq(
+                private$datatable_seq$long_range$control <- BSgenome::getSeq(
                     private$ref, 
                     self$control_breaks_expanded$long_range
                 )

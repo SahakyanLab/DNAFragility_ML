@@ -23,28 +23,22 @@ Features <- R6::R6Class(
         #' @field true_bp_table data.table of true positions broken.
         true_bp_table = NULL,
 
-        initialize = function(k, exp, seed, scores_with_kmers, true_prop, assembly, 
-                              break_score, ranges, exp_to_remove_in_table, 
-                              regression, get_controls, which_chr, num_cores){
-            if(!missing(exp)) private$exp <- exp
-            if(!missing(exp_to_remove_in_table)){
-                private$exp_to_remove_in_table <- exp_to_remove_in_table
-            }
+        initialize = function(fasta_sequence, label, k, seed, break_score, df_bp,
+                              regression, get_controls, num_cores, any_predictors, 
+                              only_breaks){
             if(!missing(regression)) private$regression <- regression
             if(!missing(get_controls)) private$get_controls <- get_controls
-
-            # if only want to extract features for specific chromosome
-            if(!missing(which_chr)) private$which_chr <- which_chr
             if(!missing(num_cores)) private$num_cores <- num_cores
+            if(!missing(any_predictors)) private$any_predictors <- any_predictors
+            if(!missing(only_breaks)) private$only_breaks <- only_breaks
 
             super$initialize(
+                fasta_sequence = fasta_sequence,
+                label = label,
                 k = k, 
-                exp = exp, 
                 seed = seed,
-                scores_with_kmers = scores_with_kmers,
-                true_prop = true_prop,
-                assembly = assembly,
-                break_score = break_score
+                break_score = break_score,
+                df_bp = df_bp
             )
         },
 
@@ -58,7 +52,6 @@ Features <- R6::R6Class(
         #'  position 2 is the medium range effect, and position 3 is the long range effect.
         #' @param FEAT_LONGRANGE_PREPARAMS Boolean. If True, gets summed k-mer pre-param z-scores.
         #' @param FEAT_PROCESS_LIKE_IMAGE Boolean. If True, will extract "pixels" per rolling k-mer position.
-        #' @param only_breaks Boolean. If TRUE, will scan only using breakage data.
         #' @param FEAT_G4_REGEX Boolean. If TRUE, this feature gets extracted.
         #' @param g4_type Character vector. c("GPQS", "GQS", "APQS", "AQS").
         #' @param FEAT_GC_COUNT Boolean. If TRUE, this feature gets extracted.
@@ -71,19 +64,17 @@ Features <- R6::R6Class(
         #' @param FEAT_RNAfold.CALL Character vector. Root directory of the viennaRNA programme.
         #' @param maxloopsize Numeric vector of maximum loop size for G4 sequences.
         #' @param DNA_SHAPE Boolean. If TRUE, this feature gets extracted.
-        #' @param SAVE_OUTPUT Boolean. If TRUE, feature matrix gets backed-up as csv file.
         #' @return None.
-        get_features = function(break_type = "biological", ranges = NULL,
+        get_features = function(break_type = "Biological", ranges = NULL,
                                 FEAT_PROCESS_LIKE_IMAGE = FALSE,
-                                FEAT_LONGRANGE_PREPARAMS = FALSE, only_breaks = TRUE,
+                                FEAT_LONGRANGE_PREPARAMS = FALSE,
                                 FEAT_G4_REGEX = TRUE, g4_type = "GPQS",
                                 FEAT_GC_COUNT = TRUE,
                                 FEAT_KMER_COUNTS = TRUE, crash_test = FALSE, kmer_window = 3,
                                 FEAT_VIENNA_RNA = TRUE, sliding_window = NULL, nuc_type = "DNA",
                                 RNAfold.CALL = "/Users/paddy/opt/anaconda3/bin/RNAfold",
                                 maxloopsize = 12,
-                                FEAT_DNA_SHAPE = TRUE,
-                                SAVE_OUTPUT = TRUE){
+                                FEAT_DNA_SHAPE = TRUE){
             start.time <- Sys.time()
 
             # extracts true and control breakpoints
@@ -132,14 +123,6 @@ Features <- R6::R6Class(
                 ))
                 private$column_names$EPIGENOME_MARKS <- colnames(true.breaks.mat)[epigenome.ind]            
 
-                # remove the dataset that is present in the true breakpoint tables
-                if(private$exp_to_remove_in_table != ""){
-                    true.breaks.mat <- true.breaks.mat[,-which(grepl(
-                        pattern = private$exp_to_remove_in_table, 
-                        x = colnames(true.breaks.mat))
-                    )]
-                }
-
                 # remaining ones are the breakage scores
                 breaks.ind <- which(!grepl(
                     pattern = paste0(
@@ -155,20 +138,13 @@ Features <- R6::R6Class(
                     self$control_breaks$zscore$scores,
                     self$control_breaks$ratio$scores
                 )
-                # remove the dataset that is present in the control breakpoint tables
-                if(private$exp_to_remove_in_table != ""){
-                    control.breaks.mat <- control.breaks.mat[,-which(grepl(
-                        pattern = private$exp_to_remove_in_table, 
-                        x = colnames(control.breaks.mat))
-                    )]                
-                }
-
+                
                 if(FEAT_LONGRANGE_PREPARAMS){
                     private$kmer_window <- 6
                     private$generate_kmer_table()
-                    private$get_longrange_preparams(data = "breaks", only_breaks = only_breaks)
+                    private$get_longrange_preparams(data = "breaks")
                     if(!private$regression & private$get_controls){
-                        private$get_longrange_preparams(data = "control", only_breaks = only_breaks)
+                        private$get_longrange_preparams(data = "control")
                     }
 
                     true.breaks.mat <- cbind(
@@ -202,28 +178,27 @@ Features <- R6::R6Class(
 
                 if(FEAT_GC_COUNT){
                     private$get_gc_count(data = "breaks")
-                    if(!private$regression & private$get_controls) private$get_gc_count(data = "control")
+                    if(!private$regression & private$get_controls){
+                        private$get_gc_count(data = "control")
+                    }
 
                     col.ind <- c(
                         col.ind,
-                        "GC_content" = ncol(true.breaks.mat)+1,
-                        "GC_skew" = ncol(true.breaks.mat)+2
+                        "GC_content" = ncol(true.breaks.mat)+1
                     )
                     private$column_names$GC_CONTENT <- "GC_content"
-                    private$column_names$GC_COUNT <- c("GC_content", "GC_skew")
+                    private$column_names$GC_COUNT <- c("GC_content")
 
                     true.breaks.mat <- cbind(
                         true.breaks.mat,
-                        private$gc_content$true_breaks,
-                        private$gc_skew$true_breaks
+                        private$gc_content$true_breaks
                         # private$singleton_content$true_breaks
                     )
 
                     if(!private$regression & private$get_controls){
                         control.breaks.mat <- cbind(
                             control.breaks.mat,
-                            private$gc_content$control_breaks,
-                            private$gc_skew$control_breaks
+                            private$gc_content$control_breaks
                             # private$singleton_content$control_breaks
                         )
                     }
@@ -295,529 +270,171 @@ Features <- R6::R6Class(
                 predictor <- predictor[, 1]
                 setnames(predictor, "predictor")
             } else {
-                if(private$get_controls){
-                    predictor <- switch(private$break_score,
-                        "zscore" = c(
-                            rep("YES", dim(self$true_breaks$zscore$scores)[1]), 
-                            rep("NO", dim(self$control_breaks$zscore$scores)[1])
-                        ),
-                        "ratio" = c(
-                            rep("YES", dim(self$true_breaks$ratio$scores)[1]), 
-                            rep("NO", dim(self$control_breaks$ratio$scores)[1])
+                if(private$any_predictors){
+                    if(private$get_controls){
+                        predictor <- switch(private$break_score,
+                            "zscore" = c(
+                                rep("YES", dim(self$true_breaks$zscore$scores)[1]), 
+                                rep("NO", dim(self$control_breaks$zscore$scores)[1])
+                            ),
+                            "ratio" = c(
+                                rep("YES", dim(self$true_breaks$ratio$scores)[1]), 
+                                rep("NO", dim(self$control_breaks$ratio$scores)[1])
+                            )
                         )
-                    )
-                } else {
-                    predictor <- mcols(self$true_breaks[[private$break_score]]$kmer)
-                    predictor <- as.data.table(predictor)
-                    predictor <- predictor[, 1]
-                    setnames(predictor, "predictor")
-                    predictor <- predictor[, predictor := ifelse(predictor == 1, "YES", "NO")]$predictor
+                    } else {
+                        predictor <- mcols(self$true_breaks[[private$break_score]]$kmer)
+                        predictor <- as.data.table(predictor)
+                        predictor <- predictor[, 1]
+                        setnames(predictor, "predictor")
+                        predictor <- predictor[, predictor := ifelse(predictor == 1, "YES", "NO")]$predictor
+                    }
+                    predictor <- as.factor(predictor)
                 }
-                predictor <- as.factor(predictor)
             }
+
+            if(!private$any_predictors) predictor <- NULL
             feature.mat <- cbind(predictor, feature.mat)
 
             # need to save breakpoint coordinate used for this feature matrix
-            if(!private$regression){
-                if(private$get_controls){
-                    feat.mat.split <- split(feature.mat, predictor)
-                    feat.mat.split.no <- feat.mat.split$NO
-                    feat.mat.split.yes <- feat.mat.split$YES
-                    feat.mat.split.yes.ind <- which(complete.cases(feat.mat.split.yes))
-                    feat.mat.split.no.ind <- which(complete.cases(feat.mat.split.no))
+            if(private$any_predictors){
+                if(!private$regression){
+                    if(private$get_controls){
+                        feat.mat.split <- split(feature.mat, predictor)
+                        feat.mat.split.no <- feat.mat.split$NO
+                        feat.mat.split.yes <- feat.mat.split$YES
+                        feat.mat.split.yes.ind <- which(complete.cases(feat.mat.split.yes))
+                        feat.mat.split.no.ind <- which(complete.cases(feat.mat.split.no))
 
-                    ctrl.bp.to.save <- as.data.table(
-                        self$control_breaks[[private$break_score]]$ref[feat.mat.split.no.ind]
-                    )
-                    ctrl.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)]
-                    ctrl.bp.to.save[, Breaks := "NO"]
+                        ctrl.bp.to.save <- as.data.table(
+                            self$control_breaks[[private$break_score]]$ref[feat.mat.split.no.ind]
+                        )
+                        ctrl.bp.to.save <- data.table(
+                            seqnames = ctrl.bp.to.save$seqnames,
+                            start = ctrl.bp.to.save$start,
+                            width = 2,
+                            Breaks = "NO"
+                        )
 
-                    true.bp.to.save <- as.data.table(
-                        self$true_breaks[[private$break_score]]$ref[feat.mat.split.yes.ind]
-                    )
-                    true.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)]
-                    true.bp.to.save[, Breaks := "YES"]
-                } else {
-                    feat.mat.split.yes.ind <- which(feature.mat$predictor == "YES")
-                    true.bp.to.save <- as.data.table(
-                        self$true_breaks[[private$break_score]]$ref[feat.mat.split.yes.ind]
-                    )
-                    true.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)]
-                    true.bp.to.save[, Breaks := NULL]
-                    true.bp.to.save[, Breaks := "YES"]
+                        true.bp.to.save <- as.data.table(
+                            self$true_breaks[[private$break_score]]$ref[feat.mat.split.yes.ind]
+                        )
+                        true.bp.to.save <- data.table(
+                            seqnames = true.bp.to.save$seqnames,
+                            start = true.bp.to.save$start,
+                            width = 2,
+                            Breaks = "YES"
+                        )
+                    } else {
+                        feat.mat.split.yes.ind <- which(feature.mat$predictor == "YES")
+                        true.bp.to.save <- as.data.table(
+                            self$true_breaks[[private$break_score]]$ref[feat.mat.split.yes.ind]
+                        )
+                        true.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)]
+                        true.bp.to.save[, Breaks := NULL]
+                        true.bp.to.save[, Breaks := "YES"]
+                        
+                        feat.mat.split.no.ind <- which(feature.mat$predictor == "NO")
+                        ctrl.bp.to.save <- as.data.table(
+                            self$true_breaks[[private$break_score]]$ref[feat.mat.split.no.ind]
+                        )
+                        ctrl.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)]
+                        ctrl.bp.to.save[, Breaks := NULL]
+                        ctrl.bp.to.save[, Breaks := "NO"]
+                    }
                     
-                    feat.mat.split.no.ind <- which(feature.mat$predictor == "NO")
-                    ctrl.bp.to.save <- as.data.table(
-                        self$true_breaks[[private$break_score]]$ref[feat.mat.split.no.ind]
+                    dir.create(
+                        path = "../data/feature_matrix/control_break_locations/",
+                        showWarnings = FALSE,
+                        recursive = TRUE
                     )
-                    ctrl.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)]
-                    ctrl.bp.to.save[, Breaks := NULL]
-                    ctrl.bp.to.save[, Breaks := "NO"]
-                }
+                    fwrite(
+                        ctrl.bp.to.save,
+                        file = paste0(
+                            "../data/feature_matrix/control_break_locations/",
+                            private$exp, "_kmer-", self$k, "_seed-", self$seed, "_",
+                            ifelse(private$break_score_all, "all", private$break_score), 
+                            ".csv"
+                        )
+                    )
+
+                    dir.create(
+                        path = "../data/feature_matrix/true_break_locations/",
+                        showWarnings = FALSE,
+                        recursive = TRUE
+                    )
+                    fwrite(
+                        true.bp.to.save,
+                        file = paste0(
+                            "../data/feature_matrix/true_break_locations/",
+                            private$exp, "_kmer-", self$k, "_seed-", self$seed, "_",
+                            ifelse(private$break_score_all, "all", private$break_score), 
+                            ".csv"
+                        )
+                    )
+
+                    self$true_bp_table <- rbind(true.bp.to.save, ctrl.bp.to.save)
+                    setorder(self$true_bp_table, start)
+                } else {
+                    feat.mat.split.yes.ind <- which(complete.cases(feature.mat))
                 
-                dir.create(
-                    path = "../data/feature_matrix/control_break_locations/",
-                    showWarnings = FALSE,
-                    recursive = TRUE
-                )
-                fwrite(
-                    ctrl.bp.to.save,
-                    file = paste0(
-                        "../data/feature_matrix/control_break_locations/",
-                        private$exp, "_kmer-", self$k, "_seed-", self$seed, "_",
-                        ifelse(private$break_score_all, "all", private$break_score), 
-                        ".csv"
+                    true.bp.to.save <- as.data.table(
+                        self$true_breaks[[private$break_score]]$ref[feat.mat.split.yes.ind]
                     )
-                )
+                    true.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)] 
+                    self$true_bp_table <- true.bp.to.save
 
-                dir.create(
-                    path = "../data/feature_matrix/true_break_locations/",
-                    showWarnings = FALSE,
-                    recursive = TRUE
-                )
-                fwrite(
-                    true.bp.to.save,
-                    file = paste0(
-                        "../data/feature_matrix/true_break_locations/",
-                        private$exp, "_kmer-", self$k, "_seed-", self$seed, "_",
-                        ifelse(private$break_score_all, "all", private$break_score), 
-                        ".csv"
+                    dir.create(
+                        path = "../data/feature_matrix/true_break_locations/",
+                        showWarnings = FALSE,
+                        recursive = TRUE
                     )
-                )
-
-                self$true_bp_table <- rbind(true.bp.to.save, ctrl.bp.to.save)
-            } else {
-                feat.mat.split.yes.ind <- which(complete.cases(feature.mat))
-             
-                true.bp.to.save <- as.data.table(
-                    self$true_breaks[[private$break_score]]$ref[feat.mat.split.yes.ind]
-                )
-                true.bp.to.save[, `:=`(end = NULL, width = 2, strand = NULL)] 
-                self$true_bp_table <- true.bp.to.save
-
-                dir.create(
-                    path = "../data/feature_matrix/true_break_locations/",
-                    showWarnings = FALSE,
-                    recursive = TRUE
-                )
-                fwrite(
-                    true.bp.to.save,
-                    file = paste0(
-                        "../data/feature_matrix/true_break_locations/",
-                        private$exp, "_kmer-", self$k, "_seed-", self$seed, "_",
-                        ifelse(private$break_score_all, "all", private$break_score), 
-                        ".csv"
+                    fwrite(
+                        true.bp.to.save,
+                        file = paste0(
+                            "../data/feature_matrix/true_break_locations/",
+                            private$exp, "_kmer-", self$k, "_seed-", self$seed, "_",
+                            ifelse(private$break_score_all, "all", private$break_score), 
+                            ".csv"
+                        )
                     )
-                )
+                }
             }
     
-            if(private$regression | !private$get_controls){
-                if(private$regression){
-                    self$feature_matrix <- feature.mat[feat.mat.split.yes.ind]
+            if(private$any_predictors){
+                if(private$regression | !private$get_controls){
+                    if(private$regression){
+                        self$feature_matrix <- feature.mat[feat.mat.split.yes.ind]
+                    } else {
+                        self$feature_matrix <- feature.mat
+                    }
                 } else {
-                    self$feature_matrix <- feature.mat
+                    feat.mat.split.yes <- feat.mat.split.yes[feat.mat.split.yes.ind]
+                    feat.mat.split.no <- feat.mat.split.no[feat.mat.split.no.ind]
+                    self$feature_matrix <- rbind(feat.mat.split.yes, feat.mat.split.no)
                 }
             } else {
-                feat.mat.split.yes <- feat.mat.split.yes[feat.mat.split.yes.ind]
-                feat.mat.split.no <- feat.mat.split.no[feat.mat.split.no.ind]
-                self$feature_matrix <- rbind(feat.mat.split.yes, feat.mat.split.no)
-            }
+                self$feature_matrix <- feature.mat
+                
+                # start_pos <- mcols(self$true_breaks[[private$break_score]]$ref)$start.pos
+                # ind <- match(start_pos, self$df_bp$start)
+                # self$true_bp_table <- self$df_bp[ind,]
 
-            if(is.null(private$backup_feature_matrix)){
-                private$backup_feature_matrix <- self$feature_matrix
+                self$true_bp_table <- as_tibble(self$true_breaks[[private$break_score]]$ref) %>% 
+                    dplyr::select(start, seqnames, width, start.pos) %>% 
+                    as.data.table()
+                self$true_bp_table[, start.pos := NULL]
             }
 
             total.time <- Sys.time() - t1
             cat("DONE! --", signif(total.time[[1]], 2), 
                 attr(total.time, "units"), "\n")
-
-            if(SAVE_OUTPUT){
-                # progress message
-                t1 <- Sys.time()
-                cur.msg <- "Backing-up results as RData files"
-                l <- paste0(rep(".", 70-nchar(cur.msg)), collapse = "")
-                cat(paste0(cur.msg, l))
-
-                saveRDS(
-                    private$column_names, 
-                    file = paste0("../data/feature_matrix/", private$exp, 
-                                  "_kmer-", self$k, "_seed-", self$seed, "_",
-                                  ifelse(private$break_score_all == TRUE,
-                                  "all", private$break_score), 
-                                  "-features_COLNAMES.RData"),
-                )
-
-                write_parquet(
-                    self$feature_matrix, 
-                    file = paste0("../data/feature_matrix/", private$exp, 
-                                  "_kmer-", self$k, "_seed-", self$seed, "_",
-                                  ifelse(private$break_score_all == TRUE,
-                                  "all", private$break_score), 
-                                  "-features.parquet")
-                )
-
-                to.keep <- c("predictor", private$column_names$BREAKS)
-                write_parquet(
-                    self$feature_matrix[, ..to.keep], 
-                    file = paste0("../data/feature_matrix/", private$exp, 
-                                  "_kmer-", self$k, "_seed-", self$seed, "_", 
-                                  ifelse(private$break_score_all == TRUE,
-                                  "all", private$break_score), 
-                                  "-breakscores.parquet")
-                )
-
-                total.time <- Sys.time() - t1
-                cat("DONE! --", signif(total.time[[1]], 2), 
-                    attr(total.time, "units"), "\n")
-            }
 
             final.time <- Sys.time() - start.time
             cat(paste(c(rep("-", 70), "\n"), collapse = ""))
             cat("Final time taken:", final.time[[1]], 
                 attr(final.time, "units"), "\n")
             cat(paste(c(rep("-", 70), "\n"), collapse = ""))
-        },
-
-        #' @description
-        #' Import feature matrix from csv file if exists.
-        #' @param custom_test_path character vector. Path to file of test file.
-        #' @return None.
-        get_features_from_file = function(custom_test_path = ""){
-            # progress message
-            t1 <- Sys.time()
-            cur.msg <- "Importing feature matrix from RData file"
-            l <- paste0(rep(".", 70-nchar(cur.msg)), collapse = "")
-            cat(paste0(cur.msg, l))
-
-            file.to.import <- paste0(
-                "../data/feature_matrix/", private$exp, 
-                "_kmer-", self$k, "_seed-", self$seed, "_",
-                ifelse(private$break_score_all, 
-                       "all", private$break_score), 
-                "-features.RData"
-            )
-
-            if(file.exists(file.to.import)){
-                self$feature_matrix <- readRDS(file.to.import)
-                private$column_names <- readRDS(
-                    paste0("../data/feature_matrix/", private$exp, 
-                           "_kmer-", self$k, "_seed-", self$seed, "_", 
-                           ifelse(private$break_score_all, 
-                                  "all", private$break_score), 
-                           "-features_COLNAMES.RData")
-                )
-            } else {
-                stop("File doesn't exist.")
-            }
-
-            if(is.null(private$backup_feature_matrix)){
-                private$backup_feature_matrix <- self$feature_matrix
-            }
-
-            if(is.null(private$backup_train_matrix)){
-                private$backup_train_matrix <- self$train_matrix
-                private$backup_test_matrix <- self$test_matrix
-            }
-
-            if(custom_test_path != ""){
-                self$custom_test_path <- custom_test_path
-                private$backup_test_matrix <- self$test_matrix <- readRDS(custom_test_path)
-            }
-
-            total.time <- Sys.time() - t1
-            cat("DONE! --", signif(total.time[[1]], 2), 
-                attr(total.time, "units"), "\n")
-        },
-
-        #' @description
-        #' Select subset of columns from feature matrix. 
-        #' @param cols Character Vector of columns to select:
-        #' c("all", "only_breaks", "only_triplets", "pre_parameterised").
-        #' @return None.
-        select_columns = function(cols = "all"){
-            if(is.null(private$backup_feature_matrix)){
-                private$backup_feature_matrix <- self$feature_matrix
-            }
-
-            if(is.null(private$backup_train_matrix)){
-                private$backup_train_matrix <- self$train_matrix
-                private$backup_test_matrix <- self$test_matrix
-            }
-
-            to.filter <- switch(cols,
-                "only_breaks" = private$column_names$BREAKS,
-                "only_triplets" = private$column_names$KMER_COUNTS,
-                "only_singleton" = private$column_names$SINGLETON,
-                "only_gc_content" = private$column_names$GC_CONTENT,
-                "only_gc" = private$column_names$GC_COUNT,
-                "singleton_and_gc" = unlist(c(
-                    private$column_names$SINGLETON,
-                    private$column_names$GC_CONTENT),
-                    use.names = FALSE),
-                "triplets_and_gc" = unlist(c(
-                    private$column_names$KMER_COUNTS,
-                    private$column_names$GC_CONTENT),
-                    use.names = FALSE),                    
-                "pre_parameterised" = unlist(c(
-                    private$column_names$BREAKS,
-                    private$column_names$QM_PARAMETERS,
-                    private$column_names$TFBS,
-                    private$column_names$G4MAP,
-                    private$column_names$LONGRANGE_PREPARAMS
-                    # private$column_names$EPIGENOME_MARKS
-                ), use.names = FALSE),
-                "pre_parameterised_triplets_gc" = unlist(c(
-                    private$column_names$BREAKS,
-                    private$column_names$QM_PARAMETERS,
-                    private$column_names$TFBS,
-                    private$column_names$G4MAP,
-                    private$column_names$LONGRANGE_PREPARAMS,
-                    private$column_names$KMER_COUNTS,
-                    private$column_names$GC_CONTENT,
-                    private$column_names$SINGLETON
-                ), use.names = FALSE),
-                "breaks_with_longrange" = unlist(c(
-                    private$column_names$BREAKS,
-                    private$column_names$LONGRANGE_PREPARAMS),
-                    use.names = FALSE),                    
-                "all" = unlist(c(
-                    private$column_names$BREAKS,
-                    private$column_names$QM_PARAMETERS,
-                    private$column_names$TFBS,
-                    private$column_names$G4MAP,
-                    private$column_names$EPIGENOME_MARKS,
-                    private$column_names$LONGRANGE_PREPARAMS,
-                    private$column_names$DNA_SHAPE,
-                    private$column_names$KMER_COUNTS,
-                    private$column_names$GC_CONTENT,
-                    private$column_names$SINGLETON),
-                    use.names = FALSE
-                )
-            )        
-
-            if(!"predictor" %in% to.filter) to.filter <- c("predictor", to.filter)
-            if(!length(to.filter) > 0) to.filter <- unlist(private$column_names, 
-                                                           use.names = FALSE)
-            
-            self$feature_matrix <- private$backup_feature_matrix[, ..to.filter]  
-
-            # only when another test data set is used
-            if(self$custom_test_path != ""){
-                private$backup_test_matrix <- self$test_matrix <- self$test_matrix[, ..to.filter]
-            }                                                                
-                                                        
-            # self$train_matrix <- private$backup_train_matrix[, ..to.filter]
-            # self$test_matrix <- private$backup_test_matrix[, ..to.filter]
-        },
-
-        #' @description 
-        #' Downsample the size of the training set.
-        #' @param proportion Numeric vector for the full data subset.
-        #' @return None.
-        downsample_training = function(proportion = 0.5){
-            if(!nrow(self$feature_matrix) > 1){
-                stop("Need to first extract the features!")
-            }
-            if(nrow(self$train_matrix) != nrow(private$backup_train_matrix)){
-                # self$feature_matrix <- private$backup_feature_matrix
-                self$train_matrix <- private$backup_train_matrix              
-            }
-
-            set.seed(self$seed)
-
-            # Split dataset based on partition
-            index_2 <- caret::createDataPartition(
-                self$train_matrix$predictor, 
-                p = proportion, 
-                list = FALSE,
-                times = 1
-            )
-            self$train_matrix <- self$train_matrix[index_2, ]
-        },
-
-        #' @description 
-        #' Split the feature matrix into training and test sets.
-        #' @param train.split Numeric vector for the training set proportion.
-        #' @param val.split Numeric vector for the validation set proportion.
-        #' @param split_for_validation Boolean. If TRUE, split full feature
-        #' matrix into train, test and validation sets.
-        #' @return None.
-        train_test_split = function(train.split = 0.7, val.split = 0.6,
-                                    split_for_validation = FALSE){
-            if(!nrow(self$feature_matrix) > 1){
-                stop("Need to first extract the features!")
-            }
-
-            # progress message
-            t1 <- Sys.time()
-            cur.msg <- "Generating train/test split of feature matrix"
-            l <- paste0(rep(".", 70-nchar(cur.msg)), collapse = "")
-            cat(paste0(cur.msg, l))
-
-            set.seed(self$seed)
-
-            # Split dataset based on partition
-            index_2 <- caret::createDataPartition(
-                self$feature_matrix$predictor, 
-                p = train.split, 
-                list = FALSE,
-                times = 1
-            )
-            self$train_matrix <- self$feature_matrix[index_2, ]
-
-            if(split_for_validation){
-                val.plus.test <- self$feature_matrix[-index_2, ]
-
-                # Split remaining for test and validation sets
-                index_2 <- caret::createDataPartition(
-                    val.plus.test$predictor, 
-                    p = val.split, 
-                    list = FALSE,
-                    times = 1
-                )
-                self$validation_matrix <- val.plus.test[index_2, ]
-                self$test_matrix <- val.plus.test[-index_2, ]
-            } else {
-                if(self$custom_test_path == ""){
-                    self$test_matrix <- self$feature_matrix[-index_2, ]
-                }
-            }
-
-            total.time <- Sys.time() - t1
-            cat("DONE! --", signif(total.time[[1]], 2), 
-                attr(total.time, "units"), "\n")
-        },
-
-        #' @description 
-        #' Standardise the training and test sets. 
-        #' @param all Boolean to standardise all or not.
-        #' @param triplets Boolean to standardise triplets or not.
-        #' @return None.
-        standardise = function(cols){
-            # progress message
-            t1 <- Sys.time()
-            cur.msg <- "Standardising train and test sets"
-            l <- paste0(rep(".", 70-nchar(cur.msg)), collapse = "")
-            cat(paste0(cur.msg, l))
-
-            if(is.null(nrow(self$train_matrix))){
-                stop("Need to split the feature matrix into train/test")
-            }
-
-            #' @description 
-            #' Filter train/test feature matrix for standardisation.
-            #' @param data Data.Table of train or test set.
-            #' @param all Boolean to standardise all or not.
-            #' @param triplets Boolean to standardise triplets or not.
-            #' @return List of column order of unfiltered matrix, 
-            #' columns to not standardise, and columns to standardise.
-            filter_matrix <- function(data, cols){
-                original.order <- colnames(data)
-                to.filter <- switch(cols,
-                    "only_breaks" = private$column_names$BREAKS,
-                    "only_triplets" = private$column_names$KMER_COUNTS,
-                    "only_singleton" = private$column_names$SINGLETON,
-                    "only_gc_content" = private$column_names$GC_CONTENT,
-                    "only_gc" = private$column_names$GC_COUNT,
-                    "singleton_and_gc" = unlist(c(
-                        private$column_names$SINGLETON,
-                        private$column_names$GC_CONTENT),
-                        use.names = FALSE),
-                    "triplets_and_gc" = unlist(c(
-                        private$column_names$KMER_COUNTS,
-                        private$column_names$GC_CONTENT),
-                        use.names = FALSE),                             
-                    "pre_parameterised" = unlist(c(
-                        private$column_names$BREAKS,
-                        private$column_names$QM_PARAMETERS,
-                        private$column_names$TFBS,
-                        private$column_names$G4MAP,
-                        private$column_names$LONGRANGE_PREPARAMS
-                        # private$column_names$EPIGENOME_MARKS
-                    ), use.names = FALSE),
-                    "pre_parameterised_triplets_gc" = unlist(c(
-                        private$column_names$BREAKS,
-                        private$column_names$QM_PARAMETERS,
-                        private$column_names$TFBS,
-                        private$column_names$G4MAP,
-                        private$column_names$LONGRANGE_PREPARAMS,
-                        private$column_names$KMER_COUNTS,
-                        private$column_names$GC_CONTENT,
-                        private$column_names$SINGLETON
-                    ), use.names = FALSE),
-                    "breaks_with_longrange" = unlist(c(
-                        private$column_names$BREAKS,
-                        private$column_names$LONGRANGE_PREPARAMS),
-                        use.names = FALSE),                        
-                    "all" = unlist(c(
-                        private$column_names$BREAKS,
-                        private$column_names$QM_PARAMETERS,
-                        private$column_names$TFBS,
-                        private$column_names$G4MAP,
-                        private$column_names$EPIGENOME_MARKS,
-                        private$column_names$LONGRANGE_PREPARAMS,
-                        private$column_names$DNA_SHAPE,
-                        private$column_names$KMER_COUNTS,
-                        private$column_names$GC_COUNT,
-                        private$column_names$SINGLETON),
-                        use.names = FALSE
-                    )
-                )
-                to.filter <- original.order[!(original.order %in% to.filter)]
-                if(!"predictor" %in% to.filter) to.filter <- c("predictor", to.filter)
-                cols.to.norm <- data[, -..to.filter]
-                return(list(original.order, to.filter, cols.to.norm))
-            }
-
-            # standardise training set
-            filtered.train <- filter_matrix(data = self$train_matrix, cols = cols)
-            to.remove <- filtered.train[[2]]
-            output_norm <- scale(filtered.train[[3]], center = TRUE, scale = TRUE)
-            output <- cbind(self$train_matrix[, ..to.remove], output_norm)
-            setcolorder(output, filtered.train[[1]])
-
-            # save standardised statistics
-            self$train_matrix <- output
-            self$standardise_stats$mu <- attr(output_norm, "scaled:center")
-            self$standardise_stats$sigma <- attr(output_norm, "scaled:scale")
-
-            # standardise test data based on train
-            filtered.test <- filter_matrix(data = self$test_matrix, cols = cols)
-            to.remove <- filtered.test[[2]]
-            output_norm <- scale(
-                filtered.test[[3]],
-                center = self$standardise_stats$mu,
-                scale = self$standardise_stats$sigma
-            )
-            output <- cbind(self$test_matrix[, ..to.remove], output_norm)
-            setcolorder(output, filtered.test[[1]])
-            self$test_matrix <- output
-
-            # mu <- as.numeric(matrixStats::colMeans2(filtered.train[[3]], na.rm = TRUE))
-            # sigma <- as.numeric(matrixStats::colSds(filtered.train[[3]], na.rm = TRUE))
-            # output <- apply(filtered.train[[3]], 2, scale, center = TRUE, scale = TRUE)
-            # output <- cbind(self$train_matrix[, ..to.remove], output)
-            # setcolorder(output, filtered.train[[1]])
-
-            # self$train_matrix <- output
-            # self$standardise_stats$mu <- mu
-            # self$standardise_stats$sigma <- sigma
-
-            # # standardise test set based on test set stats
-            # filtered.test <- filter_matrix(data = self$test_matrix, 
-            #                                cols = cols)
-            # to.remove <- filtered.test[[2]]
-            # centering <- sweep(filtered.test[[3]], 2, self$standardise_stats$mu, 
-            #                    "-", check.margin = FALSE)
-            # scaling <- sweep(centering, 2, self$standardise_stats$sigma, "/", 
-            #                  check.margin = FALSE)
-            # output <- cbind(self$test_matrix[, ..to.remove], scaling)
-            # setcolorder(output, filtered.test[[1]])
-            # self$test_matrix <- output
-
-            total.time <- Sys.time() - t1
-            cat("DONE! --", signif(total.time[[1]], 2), 
-                attr(total.time, "units"), "\n")
         }
     ),
     private = list(
@@ -836,14 +453,14 @@ Features <- R6::R6Class(
         #'  within the long-range regions.
         longrange_preparams = NULL,
 
+        #' @field only_breaks Boolean. If TRUE, will scan only using breakage data.
+        only_breaks = TRUE,
+
         #' @field g4_regex List of G4 regex matrix matches.
         g4_regex = NULL,
 
         #' @field gc_content List of GC content.
         gc_content = NULL,
-
-        #' @field gc_skew List of GC skew.
-        gc_skew = NULL,
 
         #' @field singleton_content List of ATGC counts.
         singleton_content = NULL,
@@ -862,9 +479,6 @@ Features <- R6::R6Class(
 
         #' @field column_names Character vector of all column names in feature matrix.
         column_names = NULL,
-
-        #' @field backup_feature_matrix Data.Table of Feature Matrix for backup.
-        backup_feature_matrix = NULL,
 
         #' @field backup_train_matrix Data.Table of the training feature matrix for backup.
         backup_train_matrix = NULL,
@@ -885,6 +499,9 @@ Features <- R6::R6Class(
 
         #' @field num_cores Numeric vector. Indicate the CPUs to use for parallel processing.
         num_cores = 4,
+
+        #' @field any_predictors Boolean. If TRUE, will treat without any predictor column. 
+        any_predictors = TRUE,
 
         #' @description 
         #' Scan along the long-range sequence and extract rolling
@@ -918,66 +535,168 @@ Features <- R6::R6Class(
             preparam.table <- cbind(category_col, preparam.table)
             preparam.vector <- as.numeric(colSums(preparam.table[, -"category"])) 
 
-            # extract kmers
-            stops <- (width(datatable.seq[1])-private$kmer_window+1)
-            
-            with_progress({
-                # `stops` is the total number of steps/iterations
-                p <- progressor(steps = stops)
+            compressed_image <- TRUE
+            if(compressed_image){
+                # extract kmers
+                stops <- (width(datatable.seq[1])-private$kmer_window+1)
                 
-                norm_zscore_function <- function(
-                    i, datatable_seq, kmer_window, 
-                    kmer_list, preparam_vector, p
-                    ){
-                    # Signal progress at the beginning of each iteration
-                    p()
-
-                    kmers_extracted <- subseq(
-                        datatable_seq,
-                        start = i, 
-                        end = i+kmer_window-1
-                    )
-
-                    # get norm z-scores
-                    kmer_ind <- match(paste0(kmers_extracted), kmer_list)
-
-                    # for neural network: one row per sequence
-                    norm_zscore <- preparam_vector[kmer_ind]
-
-                    # replace NAs with zero
-                    norm_zscore[is.na(norm_zscore)] <- 0
+                with_progress({
+                    # `stops` is the total number of steps/iterations
+                    p <- progressor(steps = stops)
                     
-                    # # k-mer index map
-                    # kmers_extracted <- get_kmer_indices(
-                    #     private$kmer_list, 
-                    #     paste0(kmers_extracted) # this is the bottleneck
-                    # )
+                    norm_zscore_function <- function(
+                        i, datatable_seq, kmer_window, 
+                        kmer_list, preparam_vector, p
+                        ){
+                        # Signal progress at the beginning of each iteration
+                        p()
 
-                    # # get norm z-scores
-                    # norm_zscore <- preparam.vector[kmers_extracted]
+                        kmers_extracted <- subseq(
+                            datatable_seq,
+                            start = i, 
+                            end = i+kmer_window-1
+                        )
 
-                    # # replace NAs with zero
-                    # norm_zscore[is.na(norm_zscore)] <- 0
+                        # get norm z-scores
+                        kmer_ind <- match(paste0(kmers_extracted), kmer_list)
 
-                    return(norm_zscore)
+                        # for neural network: one row per sequence
+                        norm_zscore <- preparam_vector[kmer_ind]
+
+                        # replace NAs with zero
+                        norm_zscore[is.na(norm_zscore)] <- 0
+                        
+                        # # k-mer index map
+                        # kmers_extracted <- get_kmer_indices(
+                        #     private$kmer_list, 
+                        #     paste0(kmers_extracted) # this is the bottleneck
+                        # )
+
+                        # # get norm z-scores
+                        # norm_zscore <- preparam.vector[kmers_extracted]
+
+                        # # replace NAs with zero
+                        # norm_zscore[is.na(norm_zscore)] <- 0
+
+                        return(norm_zscore)
+                    }
+
+                    norm_zscore <- furrr::future_map(
+                        .x = 1:stops, 
+                        .f = norm_zscore_function, 
+                        datatable_seq = datatable.seq, 
+                        kmer_window = private$kmer_window, 
+                        kmer_list = private$kmer_list, 
+                        preparam_vector = preparam.vector,
+                        p = p  # pass the progressor object to the function
+                    )
+                    norm_zscore_matrix <- do.call(cbind, norm_zscore)
+                })
+
+                
+                # # end position of each k-mer
+                # stops <- (width(datatable.seq[1])-private$kmer_window+1)
+                # norm_zscore <- furrr::future_map(
+                #     .x = 1:stops, 
+                #     .f = norm_zscore_function, 
+                #     datatable_seq = datatable.seq, 
+                #     kmer_window = private$kmer_window, 
+                #     kmer_list = private$kmer_list, 
+                #     preparam_vector = preparam.vector
+                # )
+                # norm_zscore_matrix <- do.call(cbind, norm_zscore)
+
+                if(data == "breaks"){
+                    private$sequence_image_encoding$true_breaks <- norm_zscore_matrix
+                } else if(data == "control"){
+                    private$sequence_image_encoding$control_breaks <- norm_zscore_matrix
                 }
+            } else {
+                preparam.table.mat <- preparam.table[, -"category"]
+                preparam.table.mat <- as.matrix(preparam.table.mat)
+                # dummy column for sequences with N
+                preparam.table.mat <- cbind(preparam.table.mat, 0)
+                colnames(preparam.table.mat) <- paste0("V", 1:ncol(preparam.table.mat))
 
-                norm_zscore <- furrr::future_map(
-                    .x = 1:stops, 
-                    .f = norm_zscore_function, 
-                    datatable_seq = datatable.seq, 
-                    kmer_window = private$kmer_window, 
-                    kmer_list = private$kmer_list, 
-                    preparam_vector = preparam.vector,
-                    p = p  # pass the progressor object to the function
+                dir.create(
+                    path = "image_feathers",
+                    showWarnings = FALSE
                 )
-                norm_zscore_matrix <- do.call(cbind, norm_zscore)
-            })
+                iters <- length(datatable.seq)
+                seq_len <- width(datatable.seq[1])
+                stops <- (seq_len-private$kmer_window+1)
 
-            if(data == "breaks"){
-                private$sequence_image_encoding$true_breaks <- norm_zscore_matrix
-            } else if(data == "control"){
-                private$sequence_image_encoding$control_breaks <- norm_zscore_matrix
+                with_progress({
+                    # `stops` is the total number of steps/iterations
+                    p <- progressor(steps = stops)
+                    
+                    get_image_per_seq <- function(
+                        seq_num, i, stop, seq_len, datatable_seq,
+                        kmer_window, kmer_list, preparam_vector, last_col_n, p
+                        ){
+                        # Signal progress at the beginning of each iteration
+                        p()
+
+                        # Extract the specified sequence
+                        sequence <- datatable_seq[[seq_num]]
+
+                        # extract rolling k-mer 
+                        kmers_extracted <- substring(
+                            text = paste0(sequence),
+                            first = 1:stops,
+                            last = kmer_window:seq_len
+                        )
+
+                        # get norm z-scores
+                        kmer_ind <- match(kmers_extracted, kmer_list)
+
+                        # replace NAs with zero
+                        seq_with_n <- which(grepl(
+                            pattern = "N", 
+                            x = kmers_extracted,
+                            ignore.case = TRUE
+                        ))
+                        kmer_ind[seq_with_n] <- last_col_n
+
+                        # for neural network: one matrix per sequence
+                        norm_zscore_table <- preparam_vector[, kmer_ind]
+                        colnames(norm_zscore_table) <- NULL
+
+                        # save as feather
+                        # temp <- as.data.table(norm_zscore_table)
+                        # setnames(temp, new_colnames)
+                        # write_feather(temp, paste0("./image_feathers/image_", seq_num, ".feather"))
+
+                        # con <- file("binary_images/all_images.bin", "wb")
+                        # writeBin(as.double(as.matrix(norm_zscore_table)), con, size = 8)  # 8 bytes for double
+                        # close(con)
+
+                        return(norm_zscore_table)
+                    }
+
+                    # suppressPackageStartupMessages(suppressWarnings(library(feather)))
+                    # iters = 500
+                    # t1 = Sys.time()
+                    norm_zscore <- furrr::future_map(
+                        .x = 1:iters, 
+                        .f = get_image_per_seq, 
+                        stop = stops, 
+                        seq_len = seq_len,
+                        datatable_seq = datatable.seq, 
+                        kmer_window = private$kmer_window, 
+                        kmer_list = private$kmer_list, 
+                        preparam_vector = preparam.table.mat,
+                        last_col_n = ncol(preparam.table.mat),
+                        new_colnames = paste0("V", 1:stops),
+                        p = p  # pass the progressor object to the function
+                    )
+                    # total.time = Sys.time() - t1
+                    # print(total.time)
+
+                    # (as.numeric(total.time)*60)/iters*length(datatable.seq)/60/60
+                })
+                                
+
             }
 
             cat(paste0(cur.msg, l))
@@ -990,9 +709,8 @@ Features <- R6::R6Class(
         #' Scan along the long-range sequence and extract rolling 
         #' k-meric enrichment values from pre-parameterised maps.
         #' @param data Character vector of "breaks" or "control".
-        #' @param only_breaks Boolean. If TRUE, will scan only using breakage data.
         #' @return None.
-        get_longrange_preparams = function(data, only_breaks = TRUE){
+        get_longrange_preparams = function(data){
             # progress message
             t1 <- Sys.time()
             cur.msg <- ifelse(
@@ -1016,37 +734,24 @@ Features <- R6::R6Class(
                 scale, center = TRUE, scale = TRUE
             )
             
-            if(only_breaks){
-                preparam.table <- preparam.table[, match(
+            if(private$only_breaks){
+                which_rows <- match(
                     gsub(
                         pattern = "_zscore$|_ratio$",
                         replacement = "",
                         x = private$column_names$BREAKS
                     ), 
                     category_col$category
-                )]             
+                )
+
+                preparam.table <- preparam.table[, which_rows]       
+                category_col <- category_col[which_rows]
             }
             preparam.mat <- as.matrix(preparam.table)
+            
             # require finite numeric values for matrix multiplications
             preparam.mat[is.na(preparam.mat)] <- 0
             preparam.mat[is.infinite(preparam.mat)] <- 0
-
-            # # count rolling-window k-mers
-            # kmer.counts.all <- Biostrings::oligonucleotideFrequency(
-            #     x = datatable.seq,
-            #     width = private$kmer_window,
-            #     step = 1
-            # )
-            # all.kmers <- colnames(kmer.counts.all)
-            # fwd.ind <- match(private$kmer_ref$kmer, all.kmers)
-            # rev.ind <- match(private$kmer_ref$rev.comp, all.kmers)
-            # kmer.counts.all <- kmer.counts.all[, fwd.ind]+kmer.counts.all[, rev.ind]
-
-            # # matrix multiply only first lexicologically occurring kmers
-            # first.lex.kmer <- 1:nrow(private$kmer_ref)
-            # preparam.mat <- preparam.mat[first.lex.kmer, ]
-            # kmer.counts.all <- eigenMatrixMultiply(kmer.counts.all, preparam.mat)
-            # colnames(kmer.counts.all) <- paste0(category_col$category, "_LR_sum")
 
             #' 1. get rolling k-mers in sliding window size of 1 bp
             # for some reason, the oligonucleotideFrequency function
@@ -1071,10 +776,12 @@ Features <- R6::R6Class(
                 )
 
                 # count occurrence on minus strands
-                kmer.counts <- kmer.counts[, fwd.ind]+kmer.counts[, rev.ind]
+                kmer.counts <- 
+                    kmer.counts[, fwd.ind, drop = FALSE] + 
+                    kmer.counts[, rev.ind, drop = FALSE]
 
                 # only keep first lexicologically occurring k-mer            
-                kmer.counts <- kmer.counts[, first.lex.kmer]
+                kmer.counts <- kmer.counts[, first.lex.kmer, drop = FALSE]
 
                 #'Match k-mers with the pre-parameterised table
                 # The matrix multiplication is the # of times a given 
@@ -1082,21 +789,14 @@ Features <- R6::R6Class(
                 # corresponding k-mer in the preparam table per sample.
                 # Thus, the final value is simply a summed k-meric enrichment z-score.
                 # output format: samples (rows) vs. breakage source (cols)
-
                 kmer.enrich.all <- eigenMatrixMultiply(kmer.counts, preparam.mat)
+
                 return(kmer.enrich.all)
             })
 
-            # kmer.counts.all <- sapply(kmer.counts, `[[`, 2)
-            # kmer.counts <- sapply(kmer.counts, `[[`, 1)
-            
             # long-range breakage z-scores
-            # kmer.counts.all <- do.call(rbind, kmer.counts.all)
             kmer.counts.all <- do.call(rbind, kmer.counts)
             colnames(kmer.counts.all) <- paste0(category_col$category, "_LR_sum")
-
-            # # long-range k-mer counts
-            # kmer.counts <- do.call(rbind, kmer.counts)
 
             # filter for non-zero k-mer occurrences
             kmer.counts.all[is.na(kmer.counts.all)] <- 0
@@ -1105,12 +805,8 @@ Features <- R6::R6Class(
             if(data == "breaks"){
                 private$longrange_preparams$true_breaks <- kmer.counts.all
                 private$column_names$LONGRANGE_PREPARAMS <- colnames(kmer.counts.all)
-
-                # private$kmer_counts$true_breaks <- kmer.counts
-                # private$column_names$KMER_COUNTS <- colnames(kmer.counts)
             } else if(data == "control"){
                 private$longrange_preparams$control_breaks <- kmer.counts.all
-                # private$kmer_counts$control_breaks <- kmer.counts
             }
 
             total.time <- Sys.time() - t1
@@ -1176,7 +872,7 @@ Features <- R6::R6Class(
         },
 
         #' @description 
-        #' Calculate GC content and GC skew.
+        #' Calculate GC content.
         #' @param data Character vector of "breaks" or "control".
         #' @return None.
         get_gc_count = function(data){
@@ -1184,8 +880,8 @@ Features <- R6::R6Class(
             t1 <- Sys.time()
             cur.msg <- ifelse(
                 data == "breaks",
-                "Calculating GC content/skew within true break regions",
-                "Calculating GC content/skew within control regions"
+                "Calculating GC content within true break regions",
+                "Calculating GC content within control regions"
             )
             l <- paste0(rep(".", 70-nchar(cur.msg)), collapse = "")
             cat(paste0(cur.msg, l))
@@ -1203,16 +899,13 @@ Features <- R6::R6Class(
             letter.counts.norm <- letter.counts/genome.len
             gc.content <- letter.counts.norm[, "G"]+letter.counts.norm[, "C"]
             g.minus.c <- letter.counts.norm[, "G"]-letter.counts.norm[, "C"]
-            gc.skew <- mapply('/', g.minus.c, gc.content)
 
             if(data == "breaks"){
                 private$gc_content$true_breaks <- gc.content
-                private$gc_skew$true_breaks <- gc.skew
                 private$singleton_content$true_breaks <- letter.counts
                 private$column_names$SINGLETON <- c("A", "C", "G", "T")
             } else if(data == "control"){
                 private$gc_content$control_breaks <- gc.content
-                private$gc_skew$control_breaks <- gc.skew
                 private$singleton_content$control_breaks <- letter.counts
             }
 
@@ -1255,16 +948,17 @@ Features <- R6::R6Class(
                 )
             }
 
-            private$generate_kmer_table()
             kmer.counts <- Biostrings::oligonucleotideFrequency(
-                x = datatable.seq, 
+                x = datatable.seq,
                 width = private$kmer_window,
                 step = 1
             )
             all.kmers <- colnames(kmer.counts)
             fwd.ind <- match(private$kmer_ref$kmer, all.kmers)
             rev.ind <- match(private$kmer_ref$rev.comp, all.kmers)
-            kmer.counts <- kmer.counts[, fwd.ind]+kmer.counts[, rev.ind]
+            kmer.counts <- 
+                kmer.counts[, fwd.ind, drop = FALSE] +
+                kmer.counts[, rev.ind, drop = FALSE]
 
             if(data == "breaks"){
                 private$kmer_counts$true_breaks <- kmer.counts
@@ -1272,38 +966,6 @@ Features <- R6::R6Class(
             } else {
                 private$kmer_counts$control_breaks <- kmer.counts
             }
-
-            # datatable.seq.split <- split(
-            #     datatable.seq, 
-            #     ceiling(seq_along(datatable.seq)/10000)
-            # )
-
-            # # only keep first lexicologically occurring k-mer
-            # fwd.ind <- match(private$kmer_ref$kmer, private$kmer_list)
-            # rev.ind <- match(private$kmer_ref$rev.comp, private$kmer_list)
-            # first.lex.kmer <- 1:nrow(private$kmer_ref)
-            
-            # kmer.counts <- pbapply::pblapply(1:length(datatable.seq.split), function(x){
-            #     kmer.counts <- Biostrings::oligonucleotideFrequency(
-            #         x = datatable.seq.split[[x]],
-            #         width = private$kmer_window
-            #     )
-                
-            #     # count occurrence on minus strands
-            #     kmer.counts <- kmer.counts[, fwd.ind]+kmer.counts[, rev.ind]
-
-            #     # only keep first lexicologically occurring k-mer            
-            #     kmer.counts <- kmer.counts[, first.lex.kmer]
-            #     return(kmer.counts)
-            # })
-            # kmer.counts.all <- do.call(rbind, kmer.counts)
-
-            # if(data == "breaks"){
-            #     private$kmer_counts$true_breaks <- kmer.counts.all
-            #     private$column_names$KMER_COUNTS <- colnames(kmer.counts.all)
-            # } else {
-            #     private$kmer_counts$control_breaks <- kmer.counts.all
-            # }
 
             total.time <- Sys.time() - t1
             cat("DONE! --", signif(total.time[[1]], 2), 
