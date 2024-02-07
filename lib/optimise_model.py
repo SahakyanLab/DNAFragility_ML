@@ -94,7 +94,8 @@ class OptunaModel:
              
         path_to_file_name = '../data/' + self.base_dir + '/'
         if not self.final_model:
-            path_to_file_name = path_to_file_name + self.full_name + '_' + filename
+            path_to_file_name = path_to_file_name + self.full_name + '_'
+            
         df = pd.read_parquet(
             path_to_file_name + filename + '.parquet', 
             use_threads=True
@@ -272,8 +273,12 @@ class OptunaModel:
         )
         
         if self.final_model:
-            all_auroc_values = [trial.values[0] for trial in self.study.trials if trial.state == optuna.trial.TrialState.COMPLETE]
-            all_trees = [trial.params['n_estimators'] for trial in self.study.trials if trial.state == optuna.trial.TrialState.COMPLETE]
+            all_auroc_values, all_trees = [], []
+            for trial in self.study.trials:
+                    if trial.state == optuna.trial.TrialState.COMPLETE:
+                        all_auroc_values.append(trial.values[0])
+                        all_trees.append(trial.params['n_estimators'])
+                        
             model_complexity = pd.DataFrame({
                 'Number of trees': all_trees, 
                 'AUROC': all_auroc_values
