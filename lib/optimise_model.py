@@ -49,9 +49,9 @@ class OptunaModel:
         
         self.group_colors = {
             'QM_PARAMETERS': 'salmon',
-            'G4MAP': 'blue',
             'BREAKS': 'purple',
             'LONGRANGE_PREPARAMS': 'purple',
+            'G4MAP': 'darkorange',
             'G4_REGEX': 'darkorange',
             'SINGLETON': 'brown',
             'GC_CONTENT': 'pink',
@@ -141,7 +141,7 @@ class OptunaModel:
                 "metric": "binary_logloss",
                 "verbosity": -1,
                 "boosting_type": "gbdt",
-                "device": "gpu",
+                "device_type": "gpu",
                 "num_threads": self.cpu,
                 "reg_alpha": trial.suggest_float("reg_alpha", 1e-8, 10.0, log=True),
                 "reg_lambda": trial.suggest_float("reg_lambda", 1e-8, 10.0, log=True),
@@ -315,15 +315,11 @@ class OptunaModel:
         sys.stdout.flush()
         
         if self.model_type == 'LGBM': 
-            self.study.best_trial.params["objective"]="binary"
-            self.study.best_trial.params["metric"]="binary_logloss"
-            self.study.best_trial.params["verbosity"]=1
-            self.study.best_trial.params["boosting_type"]="gbdt"
-            self.study.best_trial.params["device"]="gpu"
-            self.study.best_trial.params["num_threads"]=self.cpu
-            
             self.best_model = lgb.LGBMClassifier(
                 **self.study.best_trial.params, 
+                device='gpu',
+                num_threads=self.cpu,
+                verbosity=-1,
                 random_state=self.seed
             )
         elif self.model_type == 'LM':
@@ -336,6 +332,7 @@ class OptunaModel:
         # save model
         base_name = '../data/' + self.base_dir + '/' + self.full_name + '_' 
         if self.model_type == 'LGBM':
+            self.best_model.params['device_type'] = 'gpu'
             self.best_model.booster_.save_model(
                 base_name + 'best_LGBM_model.txt'
             )
@@ -441,8 +438,9 @@ class OptunaModel:
         all_coefs = self.feat_imp['Importance_abs'].sum()
         group_contr = self.feat_imp.groupby('group')['Importance_abs'].sum() / all_coefs * 100
 
-        self.breakscore_contr = group_contr[['BREAKS', 'LONGRANGE_PREPARAMS']].sum()
-        self.kmercount_contr = group_contr[['KMER_COUNTS']].sum()
+        # .get() to avoid KeyError
+        self.breakscore_contr = group_contr.get('BREAKS', 0) + group_contr.get('LONGRANGE_PREPARAMS', 0)
+        self.kmercount_contr = group_contr.get('KMER_COUNTS', 0) 
         
         self.feat_imp.fillna('#787878', inplace=True)
         self.feat_imp.reset_index()
