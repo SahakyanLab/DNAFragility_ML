@@ -1,15 +1,16 @@
-import os
 import pandas as pd
 import numpy as np
+from gerrychain.random import random
 import lightgbm as lgb
-import optuna
-from optuna.samplers import TPESampler
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_curve, auc, accuracy_score
+from sklearn.model_selection import train_test_split
+import optuna
+from optuna.samplers import TPESampler
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -71,7 +72,7 @@ class CrashTest:
                 "metric": "binary_logloss",
                 "verbosity": -1,
                 "boosting_type": "gbdt",
-                "device": "gpu",
+                "device_type": "gpu",
                 "num_threads": self.cpu,
                 "reg_alpha": trial.suggest_float("reg_alpha", 1e-8, 10.0, log=True),
                 "reg_lambda": trial.suggest_float("reg_lambda", 1e-8, 10.0, log=True),
@@ -138,7 +139,7 @@ class CrashTest:
                     best_params["objective"]="binary"
                     best_params["metric"]="binary_logloss"
                     best_params["boosting_type"]="gbdt"
-                    best_params["device"]="gpu"
+                    best_params["device_type"]="gpu"
                     best_params["num_threads"]=self.cpu
                     best_params['verbose']=-1
                     lgbc = lgb.LGBMClassifier(**best_params, random_state=self.seed)
