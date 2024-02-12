@@ -27,6 +27,7 @@ class DNAFragilityModel:
         self.model = lgb.Booster(
             model_file= path_to_model + '/' + model_file
         )
+        self.model.params['device_type'] = 'gpu'
         self.thresholds_df = pd.read_csv(
             path_to_model + '/best_LGBM_model_thresholds.csv'
         )
