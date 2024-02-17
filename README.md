@@ -11,13 +11,16 @@ Please run the below script to install the latest versions of the R and Python p
 bash ./setup/install_packages.sh
 ```
 
-Please also download and install the below other software.
+Please also download and install the below software.
 
 ### Edlib
 * Please clone the repo from [this link](https://github.com/Martinsos/edlib) (Edlib >= 1.2.7). Place the [edlib.h](https://github.com/Martinsos/edlib/tree/master/edlib/include) and [edlib.cpp](https://github.com/Martinsos/edlib/tree/master/edlib/src) into [lib/edlib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib/edlib) and [01_LGBM_FullGenome/lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/01_LGBM_FullGenome/lib/edlib) folders.
 
 ### phmap.hpp via gtl
 * Please clone the repo from [this link](https://github.com/greg7mdp/gtl). Place the contents of gtl into [lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib) and [01_LGBM_FullGenome/lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib) folders.
+
+### Secondary structure folding parameter file
+* Please download the [DNA parameter file](https://github.com/ViennaRNA/ViennaRNA/blob/master/misc/dna_mathews2004.par) and place it into [data/parameters](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/data/parameters) folder.
 
 ## 2. Public files to download
 ### Cancer-associated DNA strand breaks
@@ -69,9 +72,16 @@ Unpack and extract the relevant files. Place the contents into [COSMIC/data/lift
 
 We processed all datasets in the reference genome version used as per the deposition. For Kmertone, the individual fasta files were needed. This GitHub repo is dependent on the results of [DNAFragility_dev](https://github.com/SahakyanLab/DNAFragility_dev), where the reference genomes are downloaded already.
 
-## 5. Run the full DNAFragility_ML study
+## Other notes
+
+* All cpp files are interfaced *via* the [Rcpp](https://cran.r-project.org/web/packages/Rcpp/index.html) library in R with `omp.h` when possible. Please ensure you have this installed.
+* Various model predictions have been deposited if the compressed file size was within the limit. If you wish to view them, please `gunzip` the files.
+
+## Run the full DNAFragility_ML study
 
 Please note that many of the calculations were computationally intensive. Most things were run in parallel in smaller batches. However, if you submit the below bash script, it runs all scripts sequentially and can therefore **take several months** to complete.
+
+You may need to monitor your memory usage, memory cache, and swap to ensure calculations run smoothly.
 
 ```bash
 bash run_dnafragility.sh
