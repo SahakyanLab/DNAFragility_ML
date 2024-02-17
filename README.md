@@ -14,10 +14,10 @@ bash ./setup/install_packages.sh
 Please also download and install the below other software.
 
 ### Edlib
-* Please clone the repo from [this link](https://github.com/Martinsos/edlib) (Edlib >= 1.2.7). Place the [edlib.h](https://github.com/Martinsos/edlib/tree/master/edlib/include) and [edlib.cpp](https://github.com/Martinsos/edlib/tree/master/edlib/src) into [lib/edlib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib/edlib) and [01_LGBM_FullGenome/lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/01_LGBM_FullGenome/lib/edlib)
+* Please clone the repo from [this link](https://github.com/Martinsos/edlib) (Edlib >= 1.2.7). Place the [edlib.h](https://github.com/Martinsos/edlib/tree/master/edlib/include) and [edlib.cpp](https://github.com/Martinsos/edlib/tree/master/edlib/src) into [lib/edlib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib/edlib) and [01_LGBM_FullGenome/lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/01_LGBM_FullGenome/lib/edlib) folders.
 
 ### phmap.hpp via gtl
-* Please clone the repo from [this link](https://github.com/greg7mdp/gtl). Place the contents of gtl into [lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib) and [01_LGBM_FullGenome/lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib)
+* Please clone the repo from [this link](https://github.com/greg7mdp/gtl). Place the contents of gtl into [lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib) and [01_LGBM_FullGenome/lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib) folders.
 
 ## 2. Public files to download
 ### Cancer-associated DNA strand breaks
@@ -51,11 +51,9 @@ To download CpG islands and Isochores from the [UCSC Table Browser](https://geno
 * [CpG Islands.](https://genome.ucsc.edu/cgi-bin/hgTables/) clade: Mammal, genome: Human, assembly: Jan 2022 (T2T CHM13v2.0/hs1), group: All Tracks, track: CpG Islands, table: hub_3671779_cpgIslandExtUnmasked, output format: BED - browser extensible data, output filename: output_CpG_Islands.csv.
 * [Isochores.](https://genome.ucsc.edu/cgi-bin/hgTables/) clade: Mammal, genome: Human, assembly: May 2004 (NCBI35/hg17), group: All Tracks, track: Isochores, table: ct_Isochores_9145, output format: BED - browser extensible data, output filename: iso_hg17.bb.
 
-Unpack and extract the relevant files. Place the contents into [COSMIC/data/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/COSMIC/data/annotations) folder. 
+Unpack and extract the relevant files from above. Place the contents into [COSMIC/data/annotations/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/COSMIC/data/annotations) folder. 
 
-* [Cancer driver genes from COSMIC relased v98, May 2023](https://cancer.sanger.ac.uk/cosmic/download/cosmic/v98/cancergenecensus)
-
-Unpack and extract the relevant files. Place the contents into [COSMIC/data/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/COSMIC/data/COSMIC) folder. 
+* [Cancer driver genes from COSMIC relased v98, May 2023](https://cancer.sanger.ac.uk/cosmic/download/cosmic/v98/cancergenecensus). Unpack and extract the relevant files. Place the contents into [COSMIC/data/COSMIC/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/COSMIC/data/COSMIC) folder. 
 
 ## 3. Liftover files
 
@@ -70,3 +68,11 @@ Unpack and extract the relevant files. Place the contents into [COSMIC/data/lift
 ## 4. Reference sequences
 
 We processed all datasets in the reference genome version used as per the deposition. For Kmertone, the individual fasta files were needed. This GitHub repo is dependent on the results of [DNAFragility_dev](https://github.com/SahakyanLab/DNAFragility_dev), where the reference genomes are downloaded already.
+
+## 5. Run the full DNAFragility_ML study
+
+Please note that many of the calculations were computationally intensive. Most things were run in parallel in smaller batches. However, if you submit the below bash script, it runs all scripts sequentially and can therefore **take several months** to complete.
+
+```bash
+bash run_dnafragility.sh
+```
