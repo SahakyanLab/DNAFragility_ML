@@ -58,6 +58,10 @@ Unpack and extract the relevant files from above. Place the contents into [COSMI
 
 * [Cancer driver genes from COSMIC relased v98, May 2023](https://cancer.sanger.ac.uk/cosmic/download/cosmic/v98/cancergenecensus). Unpack and extract the relevant files. Place the contents into [COSMIC/data/COSMIC/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/COSMIC/data/COSMIC) folder. 
 
+### Chromothripsis breakpoint events
+
+We obtained the chromothripsis breakpoint cases from ChromothripsisDB. Please download the dataset from Download -> Full Dataset -> [Chromothripsis case data](http://cailab.labshare.cn/ChromothripsisDB/download/)
+
 ## 3. Liftover files
 
 We processed all datasets in the reference genome version used as per the deposition. When doing comparative analysis, we lifted the genomic coordinates over to the latest T2T genome assembly. 
