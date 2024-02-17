@@ -107,7 +107,7 @@ class CrashTest:
         X_train, y_train = self.get_data(filename='train')
         X_test, y_test = self.get_data(filename='test')
 
-        downsampling = [1000, 3000, 5000, 10000, 100000, 500000]
+        downsampling = [1500, 3000, 5000, 7500, 10000, 100000, 500000]
         full_train_size = len(X_train)
         downsampling.append(full_train_size)
 

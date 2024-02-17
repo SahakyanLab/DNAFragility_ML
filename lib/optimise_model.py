@@ -127,7 +127,7 @@ class OptunaModel:
         cols_to_remove_lower = cols_to_remove.lower()
         prefix = cols_to_remove_lower.split('_')[0]
 
-        if feature_lower == cols_to_remove_lower:
+        if cols_to_remove_lower in feature_lower:
             return False
         if any(seq.lower() in feature_lower for seq in ['ATACseq', 'Chipseq', 'Dnaseseq', 'FAIREseq', 'Epigenome']):
             return prefix in feature_lower
@@ -315,11 +315,9 @@ class OptunaModel:
         sys.stdout.flush()
         
         if self.model_type == 'LGBM': 
+            self.study.best_trial.params['device_type'] = 'gpu'
             self.best_model = lgb.LGBMClassifier(
-                **self.study.best_trial.params, 
-                device='gpu',
-                num_threads=self.cpu,
-                verbosity=-1,
+                **self.study.best_trial.params,
                 random_state=self.seed
             )
         elif self.model_type == 'LM':
@@ -332,7 +330,6 @@ class OptunaModel:
         # save model
         base_name = '../data/' + self.base_dir + '/' + self.full_name + '_' 
         if self.model_type == 'LGBM':
-            self.best_model.params['device_type'] = 'gpu'
             self.best_model.booster_.save_model(
                 base_name + 'best_LGBM_model.txt'
             )
@@ -474,7 +471,7 @@ class OptunaModel:
             hex_color = feat_imp_subset.iloc[index]['hex']
             label.set_color(hex_color)
 
-        plt.xlabel('Coefficient (Absolute Value)')
+        plt.xlabel('Coefficient (Absolute Value)' if self.model_type == 'LM' else 'Feature Importance Score (scaled)')
         plt.ylabel('')
         plt.title(
             '''
