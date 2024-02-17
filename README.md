@@ -46,7 +46,7 @@ Unpack and extract the relevant files. Place the contents into [04_ClinVar/](htt
 * [RepeatMasker](https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/annotation/chm13v2.0_RepeatMasker_4.1.2p1.2022Apr14.bed)
 * [Telomere](https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/annotation/chm13v2.0_telomere.bed)
 * [Housekeeping genes from the HRT Atlas](https://housekeeping.unicamp.br/Housekeeping_GenesHuman.csv) as "Human_Housekeeping_Genes.csv"
-* [Chromosomal fragile sites from HumCFS](https://webs.iiitd.edu.in/raghava/humcfs/fragile_site_bed.zip). Unpack the individual files into the [COSMIC/data/annotations/chromosome_bed](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/COSMIC/data/COSMIC/data/annotations/chromosome_bed) folder.
+* [Gene-centric chromosomal fragile sites from HumCFS](https://webs.iiitd.edu.in/raghava/humcfs/fragile_site_bed.zip). Unpack the individual files into the [COSMIC/data/annotations/chromosome_bed](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/COSMIC/data/COSMIC/data/annotations/chromosome_bed) folder.
 * [Sites of G4 structures](https://github.com/SahakyanLab/G4Damage/blob/master/raw_data/PQSdata.txt.gz) as "G4_PQS.txt". Then, convert this file to "G4_PQS.csv".
 
 To download CpG islands and Isochores from the [UCSC Table Browser](https://genome.ucsc.edu/cgi-bin/hgTables/), please select the following:
@@ -75,7 +75,9 @@ We processed all datasets in the reference genome version used as per the deposi
 ## Other notes
 
 * All cpp files are interfaced *via* the [Rcpp](https://cran.r-project.org/web/packages/Rcpp/index.html) library in R with `omp.h` when possible. Please ensure you have this installed.
+* `RcppArmadillo.h` and `RcppEigen.h` are necessary for the feature extraction process. Please ensure you have this installed.
 * Various model predictions have been deposited if the compressed file size was within the limit. If you wish to view them, please `gunzip` the files.
+* When you run the `run_dnafragility.sh` bash script, you will need to include the path to the viennaRNA `RNAFold` programme as the first argument. Some operating systems allow you to interface it directly *via* `RNAfold`, others require the literal path to the programme.
 
 ## Run the full DNAFragility_ML study
 
@@ -84,5 +86,5 @@ Please note that many of the calculations were computationally intensive. Most t
 You may need to monitor your memory usage, memory cache, and swap to ensure calculations run smoothly.
 
 ```bash
-bash run_dnafragility.sh
+bash run_dnafragility.sh $RNAfold_path
 ```
