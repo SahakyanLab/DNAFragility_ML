@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-source /home/imm/hert6114/anaconda3/bin/activate myenv
+source activate myenv
 
 # predict on SNP data
 python predict_SVs.py --SV_type SNP

@@ -2,6 +2,9 @@
 
 pwd="$(pwd)/"
 
+# download public file
+wget ./data https://rvdb.dbi.udel.edu/download/C-RVDBvCurrent.fasta.gz
+
 # process sequences and extract features
 Rscript 00_Process_sequences.R $pwd
 

@@ -120,8 +120,7 @@ for(x in df_chunks_filter$start:df_chunks_filter$end){
         }
 
         file_label <- paste0(
-            "/media/hert6114/Paddy_6TB/ProjectBoard_Patrick/",
-            "04_DNAFragility/data/deltafragility/", 
+            "../data/deltafragility/", 
             preprocess$label
         )
         dir.create(

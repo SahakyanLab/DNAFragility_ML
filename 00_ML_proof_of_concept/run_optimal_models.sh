@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-source /home/imm/hert6114/anaconda3/bin/activate myenv
+source activate myenv
 
 # optimise logistic classifier using 3-mer data
 export PYTHONHASHSEED=0

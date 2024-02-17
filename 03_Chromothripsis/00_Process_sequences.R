@@ -170,7 +170,7 @@ all_breaks <- pbapply::pblapply(1:nrow(casedata), function(x){
         dplyr::mutate(width = 1) %>%
         plyranges::as_granges()
 
-    base_path <- "../../05_Cosmic/data/liftover"
+    base_path <- "../data/liftover"
     if(grepl("hg17", assembly)){
         # hg17 -> hg38
         liftover_chain <- import.chain(paste0(base_path, "/hg17ToHg38.over.chain"))

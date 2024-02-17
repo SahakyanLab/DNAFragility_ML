@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-source /home/imm/hert6114/anaconda3/bin/activate myenv
+source activate myenv
 
 # # predict randomly generated DNA virus sequences
 # python predict_viruses.py --random True

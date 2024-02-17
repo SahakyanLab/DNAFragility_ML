@@ -17,7 +17,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 # global variables
-dir_path = '/media/hert6114/Paddy_6TB/ProjectBoard_Patrick/04_DNAFragility/data'
+dir_path = '../data'
 if args.SV_type == 'SV':
     dir_path = dir_path + '/deltafragility'
 elif args.SV_type == 'SNP':

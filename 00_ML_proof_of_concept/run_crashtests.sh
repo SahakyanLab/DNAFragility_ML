@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-source /home/imm/hert6114/anaconda3/bin/activate myenv
+source activate myenv
 
 # optimise crash tests using 3-mer data
 python run_crashtest.py --base_name K562_DMSO_DSBs --kmer_window 3

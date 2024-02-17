@@ -14,7 +14,7 @@ args <- commandArgs(trailingOnly = TRUE)
 my.path <- as.character(args[1])
 setwd(my.path)
 
-hg19_chain <- import.chain("../../05_Cosmic/data/liftover/hg19ToHg38.over.chain")
+hg19_chain <- import.chain("../data/liftover/hg19ToHg38.over.chain")
 hg38 <- BSgenome.Hsapiens.UCSC.hg38
 hg19 <- BSgenome.Hsapiens.UCSC.hg19
 
@@ -266,8 +266,7 @@ labels_dt <- clinvar[, .(
 #' 4. Predict. 
 
 file_label <- paste0(
-    "/media/hert6114/Paddy_6TB/ProjectBoard_Patrick/",
-    "04_DNAFragility/data/deltafragility_SNPs/SNPs"
+    "../data/deltafragility_SNPs/SNPs"
 )
 dir.create(
     path = file_label,

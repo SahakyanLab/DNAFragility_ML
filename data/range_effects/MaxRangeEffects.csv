@@ -1,0 +1,15 @@
+Breakage_type,Range_effect,Max_range
+Biological,Short,19.7225460440546
+Biological,Medium,80.3962698269028
+Biological,Long,1960
+Cell free DNA,Short,13.4150372975265
+Cell free DNA,Medium,106.359363615234
+Cell free DNA,Long,313.351726534737
+Enzymatic,Short,11.5125388892539
+Enzymatic,Medium,48.9851845126357
+Enzymatic,Long,421.046727394434
+Mechanical,Short,13.8188101168548
+Mechanical,Medium,92.4994057126135
+Mechanical,Long,601.363958335349
+Natural Fragmentation,Short,14.0022052960519
+Natural Fragmentation,Long,526.509697368492

@@ -17,10 +17,10 @@ done
 bash predict_SVs.sh
 
 # get file names
-cd /media/hert6114/Paddy_6TB/ProjectBoard_Patrick/04_DNAFragility/data/
+cd ../data/
 find deltafragility/ -type f -name "*final_pred*" -print0 | xargs -0 -n 1 -P 8 sh -c 'echo "$0" >> filenames.csv'
-mv filenames.csv /media/hert6114/Paddy_5TB/ProjectBoard_Patrick/04_DNAFragility/05_DeltaFragility/data/
-cd /media/hert6114/Paddy_5TB/ProjectBoard_Patrick/04_DNAFragility/05_DeltaFragility/
+mv filenames.csv ../05_DeltaFragility/data/
+cd ../05_DeltaFragility/
 Rscript 02_Process_SV_predictions.R $pwd
 
 # analyse results

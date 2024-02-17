@@ -6,7 +6,7 @@ pwd="$(pwd)/"
 Rscript 01_Extract_Features_for_Model.R TRUE 1 $pwd
 
 # optimise lightGBM model
-source /home/imm/hert6114/anaconda3/bin/activate myenv
+source activate myenv
 python run_optimal_models.py
 conda deactivate
 
@@ -17,7 +17,7 @@ do
 done
 
 # for testing on full genome
-source /home/imm/hert6114/anaconda3/bin/activate myenv
+source activate myenv
 for chr in {1..22}
 do
     python3 predict_genome.py -chr $chr
