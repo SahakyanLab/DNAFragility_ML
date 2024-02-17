@@ -18,10 +18,10 @@ suppressPackageStartupMessages(suppressWarnings(library(Biostrings)))
 suppressPackageStartupMessages(suppressWarnings(library(BSgenome.Hsapiens.NCBI.T2T.CHM13v2.0)))
 suppressPackageStartupMessages(suppressWarnings(library(arrow)))
 
-setwd("/media/hert6114/Paddy_5TB/ProjectBoard_Patrick/04_DNAFragility/05_DeltaFragility")
-
 args <- commandArgs(trailingOnly = TRUE)
-bw <- as.numeric(args[1])
+my.path <- as.character(args[1])
+bw <- as.numeric(args[2])
+setwd(my.path)
 
 t1 <- Sys.time()
 cur.msg <- "Importing datasets"

@@ -14,7 +14,8 @@ suppressPackageStartupMessages(suppressWarnings(library(Rcpp)))
 suppressPackageStartupMessages(suppressWarnings(library(arrow)))
 
 # source functions
-my.path = "/media/hert6114/Paddy_5TB/ProjectBoard_Patrick/04_DNAFragility/01_LGBM_FullGenome"
+args <- commandArgs(trailingOnly = TRUE)
+my.path <- as.character(args[3])
 setwd(my.path)
 
 pbapply::pboptions(char = "=", type = "timer")
@@ -167,7 +168,6 @@ extract_features <- function(
 }
 
 # global vars
-args <- commandArgs(trailingOnly = TRUE)
 training_process <- as.logical(args[1])
 bw <- as.integer(1)
 num_cores <- 1
@@ -218,10 +218,10 @@ if(training_process){
         #'  Overlapping bins = TRUE
         #'  Overlap factor = 1
         #'  Remove Zero breaks = FALSE
-        system(paste(
-            "Rscript ../../05_Cosmic/scripts/02_Bin_breaks_full_genome.R", 
-            bw, "TRUE 1 FALSE"
-        ))
+        # system(paste(
+        #     "Rscript ../../05_Cosmic/scripts/02_Bin_breaks_full_genome.R", 
+        #     bw, "TRUE 1 FALSE"
+        # ))
 
         message("Already binned genome.")
     }

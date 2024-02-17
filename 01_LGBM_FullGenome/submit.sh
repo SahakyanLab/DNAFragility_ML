@@ -1,7 +1,9 @@
 #!/usr/bin/bash
 
+pwd="$(pwd)/"
+
 # for training process
-Rscript 01_Extract_Features_for_Model.R TRUE 1
+Rscript 01_Extract_Features_for_Model.R TRUE 1 $pwd
 
 # optimise lightGBM model
 source /home/imm/hert6114/anaconda3/bin/activate myenv
@@ -11,7 +13,7 @@ conda deactivate
 # extract feature matrix of the full human genome
 for chr in {1..22}
 do
-    Rscript 01_Extract_Features_for_Model.R FALSE $chr
+    Rscript 01_Extract_Features_for_Model.R FALSE $chr $pwd
 done
 
 # for testing on full genome
@@ -23,17 +25,17 @@ done
 conda deactivate
 
 # Get genomic features
-Rscript ../../05_Cosmic/scripts/02_GetGenomicFeatures.R
+Rscript ../../05_Cosmic/scripts/02_GetGenomicFeatures.R $pwd
 
 # Run all remaining analyses
-Rscript 02_Overlap_with_genic_feats.R
-Rscript 03_Random_sample_LMH_bins.R
-Rscript 04_Overlap_with_TFBS.R
-Rscript 05_Bins_Overlap_vs_NoOverlap.R
-Rscript 06_Finding_optimal_bin_size.R
-Rscript ../03_Chromothripsis.R
+Rscript 02_Overlap_with_genic_feats.R $pwd
+Rscript 03_Random_sample_LMH_bins.R $pwd
+Rscript 04_Overlap_with_TFBS.R $pwd
+Rscript 05_Bins_Overlap_vs_NoOverlap.R $pwd
+Rscript 06_Finding_optimal_bin_size.R $pwd
+Rscript ../03_Chromothripsis.R $pwd
 
 for bw in 1960 10000 20000
 do
-    Rscript 03_LMH_binned_breaks.R $bw
+    Rscript 03_LMH_binned_breaks.R $bw $pwd
 done

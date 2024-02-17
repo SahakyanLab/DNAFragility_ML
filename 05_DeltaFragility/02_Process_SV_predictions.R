@@ -10,7 +10,9 @@ suppressPackageStartupMessages(suppressWarnings(library(BSgenome.Hsapiens.NCBI.T
 suppressPackageStartupMessages(suppressWarnings(library(arrow)))
 pbapply::pboptions(char = "=", type = "txt")
 
-setwd("/media/hert6114/Paddy_5TB/ProjectBoard_Patrick/04_DNAFragility/05_DeltaFragility")
+args <- commandArgs(trailingOnly = TRUE)
+my.path <- as.character(args[1])
+setwd(my.path)
 
 # get thresholds and column names
 thresholds <- fread("../data/models/python/lightgbm/best_LGBM_model_thresholds.csv")

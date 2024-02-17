@@ -10,7 +10,8 @@ suppressPackageStartupMessages(suppressWarnings(library(rtracklayer)))
 pbapply::pboptions(char = "=", type = "txt")
 
 # source functions
-my.path = "/media/hert6114/Paddy_5TB/ProjectBoard_Patrick/04_DNAFragility/01_LGBM_FullGenome"
+args <- commandArgs(trailingOnly = TRUE)
+my.path <- as.character(args[1])
 setwd(my.path)
 
 cat(paste0("Processing overlaps with genomic features...\n"))

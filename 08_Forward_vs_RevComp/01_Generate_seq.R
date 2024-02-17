@@ -15,7 +15,9 @@ suppressPackageStartupMessages(suppressWarnings(library(arrow)))
 suppressPackageStartupMessages(suppressWarnings(library(BSgenome.Hsapiens.NCBI.T2T.CHM13v2.0)))
 
 # source functions
-setwd("/media/hert6114/Paddy_5TB/ProjectBoard_Patrick/04_DNAFragility/08_Forward_vs_RevComp")
+args <- commandArgs(trailingOnly = TRUE)
+my.path <- as.character(args[1])
+setwd(my.path)
 
 pbapply::pboptions(char = "=", type = "txt")
 options(future.seed = TRUE)

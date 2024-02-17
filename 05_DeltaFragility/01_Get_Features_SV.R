@@ -1,6 +1,3 @@
-args <- commandArgs(trailingOnly = TRUE)
-which_chunk <- as.numeric(args[1])
-
 # import libraries
 suppressPackageStartupMessages(suppressWarnings(library(data.table)))
 suppressPackageStartupMessages(suppressWarnings(library(dplyr)))
@@ -17,7 +14,11 @@ suppressPackageStartupMessages(suppressWarnings(library(Rcpp)))
 suppressPackageStartupMessages(suppressWarnings(library(arrow)))
 
 # source functions
-setwd("/media/hert6114/Paddy_5TB/ProjectBoard_Patrick/04_DNAFragility/05_DeltaFragility")
+args <- commandArgs(trailingOnly = TRUE)
+my.path <- as.character(args[1])
+which_chunk <- as.numeric(args[2])
+setwd(my.path)
+
 pbapply::pboptions(char = "=", type = "txt")
 options(future.seed = TRUE)
 source("../lib/Breakpoints.R")

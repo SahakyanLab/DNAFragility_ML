@@ -9,7 +9,9 @@ suppressPackageStartupMessages(suppressWarnings(library(BSgenome.Hsapiens.UCSC.h
 suppressPackageStartupMessages(suppressWarnings(library(arrow)))
 pbapply::pboptions(char = "=", type = "txt")
 
-setwd("/media/hert6114/Paddy_5TB/ProjectBoard_Patrick/04_DNAFragility/05_DeltaFragility")
+args <- commandArgs(trailingOnly = TRUE)
+my.path <- as.character(args[1])
+setwd(my.path)
 
 hg19_chain <- import.chain("../../05_Cosmic/data/liftover/hg19ToHg38.over.chain")
 hg38 <- BSgenome.Hsapiens.UCSC.hg38

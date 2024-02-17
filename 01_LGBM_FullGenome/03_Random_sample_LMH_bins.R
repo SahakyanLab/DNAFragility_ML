@@ -10,7 +10,8 @@ suppressPackageStartupMessages(suppressWarnings(library(BSgenome.Hsapiens.NCBI.T
 pbapply::pboptions(char = "=", type = "txt")
 
 # source functions
-setwd("/media/hert6114/Paddy_5TB/ProjectBoard_Patrick/04_DNAFragility/01_LGBM_FullGenome")
+args <- commandArgs(trailingOnly = TRUE)
+my.path <- as.character(args[1])
 
 cat(paste0("Processing random breakpoints for controls...\n"))
 

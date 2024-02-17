@@ -1,7 +1,9 @@
 #!/usr/bin/bash
 
+pwd="$(pwd)/"
+
 # process sequences and extract features
-Rscript 00_Process_sequences.R
+Rscript 00_Process_sequences.R $pwd
 
 # get file names
 cd ../data/
@@ -13,4 +15,4 @@ cd ../02_Virus_fragility/
 bash predict_viruses.sh
 
 # analyse results
-Rscript 02_analyse_predictions.R
+Rscript 02_analyse_predictions.R $pwd

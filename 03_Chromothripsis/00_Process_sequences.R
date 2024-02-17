@@ -20,7 +20,9 @@ suppressPackageStartupMessages(suppressWarnings(library(BSgenome.Hsapiens.NCBI.T
 pbapply::pboptions(char = "=", type = "txt")
 
 # source functions
-setwd("/media/hert6114/Paddy_5TB/ProjectBoard_Patrick/04_DNAFragility/03_chromothripsis")
+args <- commandArgs(trailingOnly = TRUE)
+my.path <- as.character(args[1])
+setwd(my.path)
 only_breaks <- TRUE
 
 cat(paste0("Processing chromothripsis breakpoints...\n"))
