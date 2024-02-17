@@ -1,12 +1,13 @@
 #!/usr/bin/bash
 
 pwd="$(pwd)/"
+RNAfold_path=$1
 
 # generate sequences 
-Rscript 01_Generate_seq.R $pwd
+Rscript 01_Generate_seq.R $pwd $RNAfold_path
 
 # predict forward and reverse sequences
-source /home/imm/hert6114/anaconda3/bin/activate myenv
+source activate myenv
 python predict_seq.py
 conda deactivate
 

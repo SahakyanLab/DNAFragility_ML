@@ -17,6 +17,7 @@ suppressPackageStartupMessages(suppressWarnings(library(arrow)))
 args <- commandArgs(trailingOnly = TRUE)
 my.path <- as.character(args[1])
 which_chunk <- as.numeric(args[2])
+RNAfold_path <- as.character(args[3])
 setwd(my.path)
 
 pbapply::pboptions(char = "=", type = "txt")
@@ -107,7 +108,7 @@ for(x in df_chunks_filter$start:df_chunks_filter$end){
             FEAT_KMER_COUNTS = TRUE, kmer_window = kmer_window,
             FEAT_VIENNA_RNA = FALSE, sliding_window = NULL, 
             nuc_type = "DNA", 
-            RNAfold.CALL = "/home/imm/hert6114/anaconda3/bin/RNAfold",
+            RNAfold.CALL = RNAfold_path,
             maxloopsize = 12,
             FEAT_DNA_SHAPE = FALSE
         )

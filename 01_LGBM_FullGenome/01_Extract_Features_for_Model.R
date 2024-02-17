@@ -41,7 +41,7 @@ extract_features <- function(
     exp, assembly, cols, regression, 
     break_type, long_range, bw, true_prop,
     get_controls, kmer_window, which_chr,
-    training_process, file_chunk=1
+    training_process, RNAfold_path, file_chunk=1
     ){  
     future::plan(future::multicore)
     data.table::setDTthreads(threads = num_cores)
@@ -91,7 +91,7 @@ extract_features <- function(
         FEAT_KMER_COUNTS = TRUE, kmer_window = kmer_window,
         FEAT_VIENNA_RNA = FALSE, sliding_window = NULL, 
         nuc_type = "DNA", 
-        RNAfold.CALL = "/home/imm/hert6114/anaconda3/bin/RNAfold",
+        RNAfold.CALL = RNAfold_path,
         maxloopsize = maxloopsize,
         FEAT_DNA_SHAPE = FALSE,
         SAVE_OUTPUT = FALSE
@@ -169,6 +169,7 @@ extract_features <- function(
 
 # global vars
 training_process <- as.logical(args[1])
+RNAfold_path <- as.character(args[3])
 bw <- as.integer(1)
 num_cores <- 1
 break_type <- "Biological"
@@ -205,6 +206,7 @@ if(training_process){
         get_controls=TRUE,
         kmer_window=5,
         which_chr=chr,
+        RNAfold_path=RNAfold_path,
         training_process=training_process
     )
 } else {
@@ -272,6 +274,7 @@ if(training_process){
             kmer_window=5,
             which_chr=chr,
             training_process=training_process,
+            RNAfold_path=RNAfold_path,
             file_chunk=chunk_num[f]
         )
 

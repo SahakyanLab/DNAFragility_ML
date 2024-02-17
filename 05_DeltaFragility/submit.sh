@@ -1,16 +1,17 @@
 #!/bin/bash
 
 pwd="$(pwd)/"
+RNAfold_path=$1
 
 # extract SV and SNP sequences
 Rscript 00_Process_sequences.R $pwd
 
 # extract features
-Rscript 00_Process_SNP.R $pwd
+Rscript 00_Process_SNP.R $pwd $RNAfold_path
 
 for batch in {1..40}
 do
-   Rscript 01_Get_Features_SV.R $pwd $sub_batch
+   Rscript 01_Get_Features_SV.R $pwd $sub_batch $RNAfold_path
 done
 
 # run predictions

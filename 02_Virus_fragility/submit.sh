@@ -1,12 +1,13 @@
 #!/usr/bin/bash
 
 pwd="$(pwd)/"
+RNAfold_path=$1
 
 # download public file
 wget ./data https://rvdb.dbi.udel.edu/download/C-RVDBvCurrent.fasta.gz
 
 # process sequences and extract features
-Rscript 00_Process_sequences.R $pwd
+Rscript 00_Process_sequences.R $pwd $RNAfold_path
 
 # get file names
 cd ../data/

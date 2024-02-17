@@ -12,6 +12,7 @@ pbapply::pboptions(char = "=", type = "txt")
 # source functions
 args <- commandArgs(trailingOnly = TRUE)
 my.path <- as.character(args[1])
+setwd(my.path)
 
 cat(paste0("Processing random breakpoints for controls...\n"))
 

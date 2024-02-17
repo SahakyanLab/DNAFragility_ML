@@ -12,6 +12,7 @@ pbapply::pboptions(char = "=", type = "txt")
 
 args <- commandArgs(trailingOnly = TRUE)
 my.path <- as.character(args[1])
+RNAfold_path <- as.character(args[2])
 setwd(my.path)
 
 hg19_chain <- import.chain("../data/liftover/hg19ToHg38.over.chain")
@@ -309,7 +310,7 @@ for(before_after in c("before", "after")){
         FEAT_KMER_COUNTS = TRUE, kmer_window = kmer_window,
         FEAT_VIENNA_RNA = FALSE, sliding_window = NULL, 
         nuc_type = "DNA", 
-        RNAfold.CALL = "/home/imm/hert6114/anaconda3/bin/RNAfold",
+        RNAfold.CALL = RNAfold_path,
         maxloopsize = 12,
         FEAT_DNA_SHAPE = FALSE
     )

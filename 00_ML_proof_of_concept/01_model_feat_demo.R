@@ -15,7 +15,7 @@ suppressPackageStartupMessages(suppressWarnings(library(arrow)))
 suppressPackageStartupMessages(suppressWarnings(library(DNAshapeR)))
 
 # source functions
-my.path = "/media/hert6114/Paddy_5TB/ProjectBoard_Patrick/04_DNAFragility/00_ML_proof_of_concept"
+my.path <- as.character(args[5])
 setwd(my.path)
 
 pbapply::pboptions(char = "=", type = "timer")
@@ -31,11 +31,7 @@ exp = as.character(args[1])
 kmer_window = as.numeric(args[2])
 crash_test = as.logical(args[3])
 only_breaks = as.logical(args[4])
-
-# exp="K562_DMSO_DSBs"
-# kmer_window=3
-# crash_test=TRUE
-# only_breaks=TRUE
+RNAfold_path = as.character(args[6])
 
 k = 8
 statistic = "mean"
@@ -61,16 +57,12 @@ future::plan(future::multicore)
 data.table::setDTthreads(threads = num_cores)
 
 # experiment specific
-# exp = "Ultrasonication"
-# assembly = "hs37d5"
-# exp = "K562_Top2_mediated_DSBs"
-# exp = "K562_DMSO_DSBs"
 assembly = "hg19"
 exp.to.remove.in.table = ""
 
 # # get short, medium, and long-range for this experiment
 df_ranges <- fread(paste0(
-    "../../03_Breakpoints_v2/03_FitCurves/data/ranges/",
+    "../data/ranges/",
     "kmer_8_Ranges_cutoffs_from_clustering_all-exp.csv"
 ))
 
@@ -129,7 +121,7 @@ features$get_features(
     FEAT_KMER_COUNTS = TRUE, kmer_window = kmer_window,
     FEAT_VIENNA_RNA = FEAT_VIENNA_RNA, sliding_window = NULL, 
     nuc_type = "DNA", 
-    RNAfold.CALL = "/home/imm/hert6114/ViennaRNA-2.6.4/src/bin/RNAfold",
+    RNAfold.CALL = RNAfold_path,
     maxloopsize = maxloopsize,
     FEAT_DNA_SHAPE = FEAT_DNA_SHAPE,
     SAVE_OUTPUT = FALSE

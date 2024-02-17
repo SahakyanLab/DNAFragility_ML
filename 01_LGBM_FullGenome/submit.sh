@@ -1,9 +1,10 @@
 #!/usr/bin/bash
 
 pwd="$(pwd)/"
+RNAfold_path=$1
 
 # for training process
-Rscript 01_Extract_Features_for_Model.R TRUE 1 $pwd
+Rscript 01_Extract_Features_for_Model.R TRUE 1 $pwd $RNAfold_path
 
 # optimise lightGBM model
 source activate myenv
@@ -13,7 +14,7 @@ conda deactivate
 # extract feature matrix of the full human genome
 for chr in {1..22}
 do
-    Rscript 01_Extract_Features_for_Model.R FALSE $chr $pwd
+    Rscript 01_Extract_Features_for_Model.R FALSE $chr $pwd $RNAfold_path
 done
 
 # for testing on full genome

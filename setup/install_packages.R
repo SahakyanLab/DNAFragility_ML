@@ -12,13 +12,11 @@ reg_libs <- c(
     "pbapply", "Rcpp", "caret", "DNAshapeR", "RCy3"
 )
 to_install <- reg_libs[!reg_libs %in% installed.packages()]
-
-# And finally we install the missing packages, including their dependency.
 for(lib in to_install){
     install.packages(
         lib, 
         dependencies = TRUE,
-        repos = 'http://cran.us.r-project.org'
+        repos = 'http://cran.uk.r-project.org'
     )
 }
 
@@ -30,7 +28,8 @@ bioscience_libs <- c(
     # reference genomes
     "BSgenome.Hsapiens.NCBI.T2T.CHM13v2.0",
     "BSgenome.Hsapiens.1000genomes.hs37d5",
-    "BSgenome.Hsapiens.UCSC.hg19"   
+    "BSgenome.Hsapiens.UCSC.hg18",
+    "BSgenome.Hsapiens.UCSC.hg19"
 )
 to_install <- bioscience_libs[!bioscience_libs %in% installed.packages()]
 for(lib in to_install){
