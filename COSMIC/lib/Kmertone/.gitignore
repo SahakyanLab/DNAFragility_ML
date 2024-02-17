@@ -1,0 +1,10 @@
+# ignore
+data/
+*.Rproj
+.Rhistory
+.DS_Store
+.Rproj.user/
+.Rproj.user
+*.csv
+Rprof.out
+output

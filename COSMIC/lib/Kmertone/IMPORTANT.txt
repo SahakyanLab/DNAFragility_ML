@@ -1,0 +1,5 @@
+When supplying BED/Narrowpeak-type files, they are de-facto 0-based indices. 
+Kmertone will automatically detect these files and update them to chromosome-separated 1-based indices.
+
+For the data sets that I pass through the RMSD calculation pipeline, those are already in 1-based indices.
+Don't need to worry about them.
