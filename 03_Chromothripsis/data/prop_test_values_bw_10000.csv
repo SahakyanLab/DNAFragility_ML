@@ -1,0 +1,7 @@
+group,hex,p_value,Signif_level,y_position,annotation,Key,Value,type,combined,subtitle
+Low,#ff9e27,3.68896870977097e-21,***,0.102456943308448,***,estimate_rand,4.75683385234995,Rand. Sample,Low.Rand. Sample,Pred: 0.05 (FPR)
+Low,#ff9e27,3.68896870977097e-21,***,0.102456943308448,***,estimate_pred,5.24569433084478,Model,Low.Model,Pred: 0.05 (FPR)
+Mid,#006400,2.82412182611407e-99,***,0.953456717075916,***,estimate_rand,88.7219965032771,Rand. Sample,Mid.Rand. Sample,Pred: 0.05 (FPR)
+Mid,#006400,2.82412182611407e-99,***,0.953456717075916,***,estimate_pred,90.3456717075916,Model,Mid.Model,Pred: 0.05 (FPR)
+High,#b2182b,4.41537330223153e-273,***,0.115211696443729,***,estimate_rand,6.5211696443729,Rand. Sample,High.Rand. Sample,Pred: 0.05 (FPR)
+High,#b2182b,4.41537330223153e-273,***,0.115211696443729,***,estimate_pred,4.40863396156367,Model,High.Model,Pred: 0.05 (FPR)
