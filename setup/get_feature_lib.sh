@@ -11,3 +11,6 @@ cd ../
 # copy feature libraries to appropriate folders
 mkdir -p ../data/kmertone/QueryTable/
 cp ./DNAfrAIlib/QueryTable_kmer* ../data/kmertone/QueryTable/
+
+# extended query tables
+Rscript Extend_QueryTable.R

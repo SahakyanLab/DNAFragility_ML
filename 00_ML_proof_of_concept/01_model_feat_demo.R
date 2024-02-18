@@ -25,6 +25,14 @@ setwd(my.path)
 RNAfold_path = as.character(args[6])
 fast_matrix = as.logical(args[7])
 
+# exp="K562_DMSO_DSBs"
+# kmer_window=3
+# crash_test=TRUE
+# only_breaks=TRUE
+# my.path="/Users/paddy/Documents/DPhil/DNAFragility/00_ML_proof_of_concept"
+# RNAfold_path="RNAfold"
+# fast_matrix=FALSE
+
 # source functions
 pbapply::pboptions(char = "=", type = "timer")
 options(future.seed = TRUE)

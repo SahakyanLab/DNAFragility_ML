@@ -5,8 +5,6 @@ suppressPackageStartupMessages(suppressWarnings(library(stringr)))
 
 args = commandArgs(trailingOnly = TRUE)
 my.path = as.character(args[1])
-
-my.path="/Users/paddy/Documents/DPhil/DNAFragility/setup"
 setwd(my.path)
 
 # create chromosome-separated fasta files

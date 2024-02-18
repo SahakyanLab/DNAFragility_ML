@@ -19,6 +19,7 @@ my.path <- as.character(args[1])
 which_chunk <- as.numeric(args[2])
 RNAfold_path <- as.character(args[3])
 setwd(my.path)
+fast_matrix <- as.logical(args[4])
 
 pbapply::pboptions(char = "=", type = "txt")
 options(future.seed = TRUE)
@@ -26,7 +27,7 @@ source("../lib/Breakpoints.R")
 source("../lib/Features.R")
 source("../lib/Preprocess.R")
 Rcpp::sourceCpp("../lib/edlibFunction.cpp")
-Rcpp::sourceCpp("../lib/eigenMatrixMultiply.cpp")
+if(fast_matrix) Rcpp::sourceCpp("../lib/eigenMatrixMultiply.cpp")
 
 # import data set
 clinvar_processed <- arrow::read_parquet("./data/all_labels.parquet")
@@ -87,6 +88,7 @@ for(x in df_chunks_filter$start:df_chunks_filter$end){
         preprocess$preprocess_sequences()
 
         features <- Features$new(
+            fast_matrix=fast_matrix,
             fasta_sequence = preprocess$fasta_sequence,
             label = preprocess$label,
             k = k, 

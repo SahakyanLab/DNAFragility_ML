@@ -14,6 +14,7 @@ args <- commandArgs(trailingOnly = TRUE)
 my.path <- as.character(args[1])
 RNAfold_path <- as.character(args[2])
 setwd(my.path)
+fast_matrix <- as.logical(args[3])
 
 hg19_chain <- import.chain("../data/liftover/hg19ToHg38.over.chain")
 hg38 <- BSgenome.Hsapiens.UCSC.hg38
@@ -224,7 +225,7 @@ source("../lib/Breakpoints.R")
 source("../lib/Features.R")
 source("../lib/Preprocess.R")
 Rcpp::sourceCpp("../lib/edlibFunction.cpp")
-Rcpp::sourceCpp("../lib/eigenMatrixMultiply.cpp")
+if(fast_matrix) Rcpp::sourceCpp("../lib/eigenMatrixMultiply.cpp")
 
 # extract features
 seed <- 1234
@@ -289,6 +290,7 @@ for(before_after in c("before", "after")){
     preprocess$preprocess_sequences()
     
     features <- Features$new(
+        fast_matrix=fast_matrix,
         fasta_sequence = preprocess$fasta_sequence,
         label = preprocess$label,
         k = k, 
