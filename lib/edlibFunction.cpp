@@ -5,8 +5,6 @@
 #include "edlib/edlib.h"
 #include <Rcpp.h>
 
-// for parallelisation
-#include <omp.h>
 using namespace Rcpp;
 
 // fast levenshtein distance calculation with edlib 

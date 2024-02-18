@@ -2,19 +2,21 @@
 
 pwd="$(pwd)/"
 RNAfold_path=$1
+fast_matrix=$2
 
 # for training process
-Rscript 01_Extract_Features_for_Model.R TRUE 1 $pwd $RNAfold_path
+Rscript 01_Extract_Features_for_Model.R TRUE 1 $pwd $RNAfold_path $fast_matrix
 
 # optimise lightGBM model
 source activate fragility_model
+export PYTHONHASHSEED=0
 python run_optimal_models.py
 conda deactivate
 
 # extract feature matrix of the full human genome
 for chr in {1..22}
 do
-    Rscript 01_Extract_Features_for_Model.R FALSE $chr $pwd $RNAfold_path
+    Rscript 01_Extract_Features_for_Model.R FALSE $chr $pwd $RNAfold_path $fast_matrix
 done
 
 # for testing on full genome
@@ -24,9 +26,6 @@ do
     python3 predict_genome.py -chr $chr
 done
 conda deactivate
-
-# Get genomic features
-Rscript ../../05_Cosmic/scripts/02_GetGenomicFeatures.R $pwd
 
 # Run all remaining analyses
 Rscript 02_Overlap_with_genic_feats.R $pwd

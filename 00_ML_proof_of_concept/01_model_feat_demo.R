@@ -14,24 +14,26 @@ suppressPackageStartupMessages(suppressWarnings(library(Rcpp)))
 suppressPackageStartupMessages(suppressWarnings(library(arrow)))
 suppressPackageStartupMessages(suppressWarnings(library(DNAshapeR)))
 
-# source functions
-my.path <- as.character(args[5])
-setwd(my.path)
-
-pbapply::pboptions(char = "=", type = "timer")
-options(future.seed = TRUE)
-source("../01_LGBM_FullGenome/lib/Breakpoints.R")
-source("../01_LGBM_FullGenome/lib/Features.R")
-Rcpp::sourceCpp("../01_LGBM_FullGenome/lib/edlibFunction.cpp")
-Rcpp::sourceCpp("../01_LGBM_FullGenome/lib/eigenMatrixMultiply.cpp")
-
 # global variables
 args <- commandArgs(trailingOnly = TRUE)
 exp = as.character(args[1])
 kmer_window = as.numeric(args[2])
 crash_test = as.logical(args[3])
 only_breaks = as.logical(args[4])
+my.path <- as.character(args[5])
+setwd(my.path)
 RNAfold_path = as.character(args[6])
+fast_matrix = as.logical(args[7])
+
+# source functions
+pbapply::pboptions(char = "=", type = "timer")
+options(future.seed = TRUE)
+source("../01_LGBM_FullGenome/lib/Breakpoints.R")
+source("../01_LGBM_FullGenome/lib/Features.R")
+Rcpp::sourceCpp("../lib/edlibFunction.cpp")
+
+# if relevant files don't exist, don't run below.
+if(fast_matrix) Rcpp::sourceCpp("../lib/eigenMatrixMultiply.cpp")
 
 k = 8
 statistic = "mean"
@@ -92,6 +94,7 @@ rng <- sample(100000, size = 20, replace = FALSE)
 seeds <- rng[1]
 
 features <- Features$new(
+    fast_matrix = fast_matrix,
     k = k, 
     exp = exp, 
     seed = seeds, 

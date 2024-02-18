@@ -2,12 +2,13 @@
 
 pwd="$(pwd)/"
 RNAfold_path=$1
+fast_matrix=$2
 
 # download public file
 wget ./data https://rvdb.dbi.udel.edu/download/C-RVDBvCurrent.fasta.gz
 
 # process sequences and extract features
-Rscript 00_Process_sequences.R $pwd $RNAfold_path
+Rscript 00_Process_sequences.R $pwd $RNAfold_path $fast_matrix
 
 # get file names
 cd ../data/

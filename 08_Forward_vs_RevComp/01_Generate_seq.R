@@ -19,6 +19,7 @@ args <- commandArgs(trailingOnly = TRUE)
 my.path <- as.character(args[1])
 RNAfold_path <- as.character(args[2])
 setwd(my.path)
+fast_matrix <- as.logical(args[3])
 
 pbapply::pboptions(char = "=", type = "txt")
 options(future.seed = TRUE)
@@ -26,7 +27,7 @@ source("../lib/Breakpoints.R")
 source("../lib/Features.R")
 source("../lib/Preprocess.R")
 Rcpp::sourceCpp("../lib/edlibFunction.cpp")
-Rcpp::sourceCpp("../lib/eigenMatrixMultiply.cpp")
+if(fast_matrix) Rcpp::sourceCpp("../lib/eigenMatrixMultiply.cpp")
 
 # randomly select sequences from human genome and get its reverse complement
 seq_len <- 10000
@@ -111,6 +112,7 @@ for(x in 1:length(sequence)){
     preprocess$preprocess_sequences()
 
     features <- Features$new(
+        fast_matrix=fast_matrix,
         fasta_sequence = preprocess$fasta_sequence,
         label = preprocess$label,
         df_bp = preprocess$df_bp,

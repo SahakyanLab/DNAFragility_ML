@@ -10,7 +10,7 @@ my.path="/Users/paddy/Documents/DPhil/DNAFragility/setup"
 setwd(my.path)
 
 # create chromosome-separated fasta files
-ref_path <- "../../data/ref/hg19"
+ref_path <- "../data/ref/hg19"
 dir.create(path = ref_path, showWarnings = FALSE, recursive = TRUE)
 refseq <- BSgenome.Hsapiens.UCSC.hg19::BSgenome.Hsapiens.UCSC.hg19
 ref_files <- list.files(path = ref_path, pattern = ".fasta.gz")

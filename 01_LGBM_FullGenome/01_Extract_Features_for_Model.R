@@ -17,13 +17,14 @@ suppressPackageStartupMessages(suppressWarnings(library(arrow)))
 args <- commandArgs(trailingOnly = TRUE)
 my.path <- as.character(args[3])
 setwd(my.path)
+fast_matrix = as.logical(args[4])
 
 pbapply::pboptions(char = "=", type = "timer")
 options(future.seed = TRUE)
 source("./lib/Breakpoints.R")
 source("./lib/Features.R")
 Rcpp::sourceCpp("./lib/edlibFunction.cpp")
-Rcpp::sourceCpp("./lib/eigenMatrixMultiply.cpp")
+if(fast_matrix) Rcpp::sourceCpp("./lib/eigenMatrixMultiply.cpp")
 
 # Breaks <- Breakpoints$new(
 #     exp="", 
@@ -36,7 +37,7 @@ Rcpp::sourceCpp("./lib/eigenMatrixMultiply.cpp")
 # Breaks$get_extended_tables()
 
 extract_features <- function(
-    getTable, k, seed, num_cores,
+    fast_matrix, getTable, k, seed, num_cores,
     break_score, statistic, maxloopsize,
     exp, assembly, cols, regression, 
     break_type, long_range, bw, true_prop,
@@ -68,6 +69,7 @@ extract_features <- function(
     # }
 
     features <- Features$new(
+        fast_matrix = fast_matrix,
         k = k, 
         exp = exp, 
         seed = seeds, 
@@ -188,6 +190,7 @@ if(training_process){
     exp <- "COSMIC"
 
     extract_features(
+        fast_matrix=fast_matrix,
         getTable=FALSE,
         k=8,
         seed=1234,
@@ -256,6 +259,7 @@ if(training_process){
         )
 
         extract_features(
+            fast_matrix=fast_matrix,
             getTable=FALSE,
             k=8,
             seed=1234,

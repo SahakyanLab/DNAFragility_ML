@@ -23,7 +23,7 @@ Features <- R6::R6Class(
         #' @field true_bp_table data.table of true positions broken.
         true_bp_table = NULL,
 
-        initialize = function(fasta_sequence, label, k, seed, break_score, df_bp,
+        initialize = function(fast_matrix, fasta_sequence, label, k, seed, break_score, df_bp,
                               regression, get_controls, num_cores, any_predictors, 
                               only_breaks){
             if(!missing(regression)) private$regression <- regression
@@ -31,6 +31,7 @@ Features <- R6::R6Class(
             if(!missing(num_cores)) private$num_cores <- num_cores
             if(!missing(any_predictors)) private$any_predictors <- any_predictors
             if(!missing(only_breaks)) private$only_breaks <- only_breaks
+            if(!missing(fast_matrix)) private$fast_matrix <- fast_matrix
 
             super$initialize(
                 fasta_sequence = fasta_sequence,
@@ -438,6 +439,9 @@ Features <- R6::R6Class(
         }
     ),
     private = list(
+        #' @field fast_matrix Boolean. If TRUE, will use RcppArmadillo for matrix calculations.
+        fast_matrix = FALSE,
+
         #' @field sliding_window Numeric vector of the window to slide across the sequence.
         sliding_window = NULL,
 
@@ -789,7 +793,11 @@ Features <- R6::R6Class(
                 # corresponding k-mer in the preparam table per sample.
                 # Thus, the final value is simply a summed k-meric enrichment z-score.
                 # output format: samples (rows) vs. breakage source (cols)
-                kmer.enrich.all <- eigenMatrixMultiply(kmer.counts, preparam.mat)
+                if(private$fast_matrix){
+                    kmer.enrich.all <- eigenMatrixMultiply(kmer.counts, preparam.mat)
+                } else {
+                    kmer.enrich.all <- kmer.counts %*% preparam.mat
+                }
 
                 return(kmer.enrich.all)
             })
