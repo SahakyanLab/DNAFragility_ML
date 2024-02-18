@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-source activate myenv
+source activate fragility_model
 
 # optimise crash tests using 3-mer data
 python run_crashtest.py --base_name K562_DMSO_DSBs --kmer_window 3

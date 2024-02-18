@@ -7,8 +7,9 @@ suppressPackageStartupMessages(suppressWarnings(library(ggplot2)))
 suppressPackageStartupMessages(suppressWarnings(library(plyranges)))
 suppressPackageStartupMessages(suppressWarnings(library(pbapply)))
 suppressPackageStartupMessages(suppressWarnings(library(BSgenome.Hsapiens.UCSC.hg38)))
-pbapply::pboptions(char = '=')
+pbapply::pboptions(char = '=', type = "txt")
 
+args = commandArgs(trailingOnly = TRUE)
 my.path = as.character(args[1])
 setwd(my.path)
 
@@ -129,13 +130,16 @@ plot.gaps <- pbapply::pblapply(1:length(TopTC_ID), function(x){
     return(p1)
 })
 
+dir.create(
+    path = "../figures/EDA/",
+    showWarnings = FALSE
+)
 pdf(
     file = paste0(
         "../figures/EDA/", 
         "GapBetweenTissueCancerID.pdf"
     ),
     height = 19, width = 13
-    # units = "in", res = 600
 )
 do.call(gridExtra::grid.arrange, c(plot.gaps, ncol = 3))
 plot.saved <- dev.off()

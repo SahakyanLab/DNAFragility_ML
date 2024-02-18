@@ -507,7 +507,7 @@ kmer <- 8
 refseq <- BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38
 
 max_range <- fread(paste0(
-    "../../03_Breakpoints_v2/03_FitCurves/data/",
+    "../../data/",
     "ranges/MaxValuesFromClustersByType.csv"
 ))
 max_range <- apply(max_range[, -"break_type"], 2, max)

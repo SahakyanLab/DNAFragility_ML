@@ -1,11 +1,11 @@
 # Load in all the cosmic mutations, work out a grouping, then do mutations and
 # plot deltaRTs with those groupings
-suppressPackageStartupMessages(library(data.table))
-suppressPackageStartupMessages(library(dplyr))
-suppressPackageStartupMessages(library(stringr))
-suppressPackageStartupMessages(library(ggplot2))
-suppressPackageStartupMessages(library(plyranges))
-suppressPackageStartupMessages(library(Biostrings))
+suppressPackageStartupMessages(suppressWarnings(library(data.table)))
+suppressPackageStartupMessages(suppressWarnings(library(dplyr)))
+suppressPackageStartupMessages(suppressWarnings(library(stringr)))
+suppressPackageStartupMessages(suppressWarnings(library(ggplot2)))
+suppressPackageStartupMessages(suppressWarnings(library(plyranges)))
+suppressPackageStartupMessages(suppressWarnings(library(Biostrings)))
 pbapply::pboptions(char = "=", type = "txt")
 data.table::setDTthreads(threads = 2)
 

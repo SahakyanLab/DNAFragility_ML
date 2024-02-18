@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-source activate myenv
+source activate fragility_model
 
 # optimise logistic classifier using 3-mer data
 export PYTHONHASHSEED=0

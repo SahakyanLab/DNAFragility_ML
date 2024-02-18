@@ -4,4 +4,4 @@
 Rscript install_packages.R
 
 # install python packages
-conda create --name myenv --file requirements.txt -y
+conda create --name fragility_model --file requirements.txt -y

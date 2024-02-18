@@ -9,6 +9,7 @@ suppressPackageStartupMessages(suppressWarnings(library(org.Hs.eg.db)))
 suppressPackageStartupMessages(suppressWarnings(library(GenomicFeatures)))
 suppressPackageStartupMessages(suppressWarnings(library(rtracklayer)))
 
+args = commandArgs(trailingOnly = TRUE)
 my.path = as.character(args[1])
 setwd(my.path)
 
@@ -286,8 +287,10 @@ all_cdg <- as_tibble(all_genes) %>%
 
 # oncogenes
 census_labels <- fread(
-    "../data/COSMIC/Census_labels.csv",
-    select = c("Gene Symbol", "Name", "Role in Cancer")
+    "../data/COSMIC/Cosmic_CancerGeneCensus_v98_GRCh38.tsv",
+    select = c(
+        "GENE_SYMBOL", "NAME", "ROLE_IN_CANCER"
+    )
 )
 setnames(census_labels, c("gene_id", "name", "role"))
 

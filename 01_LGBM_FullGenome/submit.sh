@@ -7,7 +7,7 @@ RNAfold_path=$1
 Rscript 01_Extract_Features_for_Model.R TRUE 1 $pwd $RNAfold_path
 
 # optimise lightGBM model
-source activate myenv
+source activate fragility_model
 python run_optimal_models.py
 conda deactivate
 
@@ -18,7 +18,7 @@ do
 done
 
 # for testing on full genome
-source activate myenv
+source activate fragility_model
 for chr in {1..22}
 do
     python3 predict_genome.py -chr $chr

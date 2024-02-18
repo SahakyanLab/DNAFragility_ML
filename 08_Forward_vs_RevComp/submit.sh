@@ -7,7 +7,7 @@ RNAfold_path=$1
 Rscript 01_Generate_seq.R $pwd $RNAfold_path
 
 # predict forward and reverse sequences
-source activate myenv
+source activate fragility_model
 python predict_seq.py
 conda deactivate
 

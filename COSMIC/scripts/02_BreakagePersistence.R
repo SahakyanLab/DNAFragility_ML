@@ -7,6 +7,7 @@ suppressPackageStartupMessages(suppressWarnings(library(ggplot2)))
 suppressPackageStartupMessages(suppressWarnings(library(plyranges)))
 suppressPackageStartupMessages(suppressWarnings(library(BSgenome.Hsapiens.UCSC.hg38)))
 
+args = commandArgs(trailingOnly = TRUE)
 my.path = as.character(args[1])
 setwd(my.path)
 
@@ -51,9 +52,6 @@ df <- as_tibble(df.parsed) %>%
 #' Explore the possibility of a persistent breakage. That is, 
 #' same chromosome and start position across multiple types of  
 #' tissue and cancer combinations.
-
-# as.data.table(table(df$TC_ID))
-
 UniqueTC_per_ChrStart <- df %>% 
     dplyr::group_by(Chr_Start_ID) %>% 
     dplyr::summarise(Bp = dplyr::n_distinct(TC_ID)) %>% 
@@ -69,9 +67,9 @@ BreakPersistenceTable <- UniqueTC_per_ChrStart %>%
     dplyr::select(-count) %>%  
     dplyr::rename_with(~c("Bp", "%"))
 
-BreakPersistenceTable %>% 
-    dplyr::rename_with(~c("Bp", "y")) %>% 
-    dplyr::mutate(cumsum = cumsum(y))
+# BreakPersistenceTable %>% 
+#     dplyr::rename_with(~c("Bp", "y")) %>% 
+#     dplyr::mutate(cumsum = cumsum(y))
 
 dir.create(path = "../data/break_persistence", showWarnings = FALSE)
 fwrite(
@@ -97,6 +95,11 @@ p1 <- BreakPersistenceTable %>%
         y = "Contribution, %"
     )
 
+dir.create(
+    path = "../figures/break_persistence/",
+    showWarnings = FALSE,
+    recursive = TRUE
+)
 ggsave(
     filename = paste0(
         "../figures/break_persistence/", 
@@ -112,11 +115,11 @@ BreakPersistence <- dplyr::left_join(
     by = "Chr_Start_ID"
 )
 
-BreakPersistence %>% 
-    dplyr::group_by(Bp) %>% 
-    dplyr::summarise(count = dplyr::n()) %>% 
-    dplyr::arrange(desc(Bp)) %>% 
-    head()
+# BreakPersistence %>% 
+#     dplyr::group_by(Bp) %>% 
+#     dplyr::summarise(count = dplyr::n()) %>% 
+#     dplyr::arrange(desc(Bp)) %>% 
+#     head()
 
 # Define the starting, middle, and end colors
 gradient_colors <- c(
@@ -263,10 +266,6 @@ df.for.p1 <- BreakPersistence %>%
     dplyr::ungroup() %>% 
     dplyr::filter(max_Bp >= 20) %>% 
     suppressMessages()
-
-df.for.p1 %>% 
-    dplyr::filter(grepl("soft-tissue", TC_ID))
-    dplyr::select(TC_ID)
 
 p1 <- df.for.p1 %>% 
     dplyr::mutate(

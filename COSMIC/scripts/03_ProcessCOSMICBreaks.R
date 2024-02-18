@@ -4,10 +4,10 @@ suppressPackageStartupMessages(suppressWarnings(library(data.table)))
 suppressPackageStartupMessages(suppressWarnings(library(stringr)))
 suppressPackageStartupMessages(suppressWarnings(library(Biostrings)))
 suppressPackageStartupMessages(suppressWarnings(library(plyranges)))
-suppressPackageStartupMessages(suppressWarnings(library(pbapply)))
 suppressPackageStartupMessages(suppressWarnings(library(ggplot2)))
 suppressPackageStartupMessages(suppressWarnings(library(Rcpp)))
 
+args = commandArgs(trailingOnly = TRUE)
 my.path = as.character(args[1])
 setwd(my.path)
 
@@ -69,7 +69,16 @@ df <- as_tibble(df) %>%
     as.data.table()
 
 # split by chromosome, and run kmertone
-dir.create("../data/experiments/COSMIC", showWarnings = FALSE)
+dir.create(
+    "../data/experiments/COSMIC", 
+    showWarnings = FALSE,
+    recursive = TRUE
+)
+dir.create(
+    "../../data/experiments/COSMIC/breakpoint_positions/", 
+    showWarnings = FALSE,
+    recursive = TRUE
+)
 
 df_bp <- lapply(1:22, function(chr){
     df_chr <- df[seqnames == paste0("chr", chr)]
@@ -110,7 +119,7 @@ control.regions <- c(ranges[["Long"]], ranges[["Long"]]+1000)
 
 # create chromosome-separated fasta files
 ref_path <- "../../data/ref/telo_to_telo"
-dir.create(path = ref_path, showWarnings = FALSE)
+dir.create(path = ref_path, showWarnings = FALSE, recursive = TRUE)
 for(chr in 1:22){
     Biostrings::writeXStringSet(
         Biostrings::DNAStringSet(refseq[[paste0("chr", chr)]]),
@@ -139,9 +148,3 @@ kmertone(
     module="score", 
     ncpu=1
 )
-
-# then copy all kmertone_scores control_coordinates over
-# from:
-# "../data/kmertone/COSMIC/kmertone_scores/control_coordinates/"
-# to:
-# "../../data/experiments/COSMIC/control_coordinates/"

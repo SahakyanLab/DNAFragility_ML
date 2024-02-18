@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-source activate myenv
+source activate fragility_model
 
 # predict on SNP data
 python predict_SVs.py --SV_type SNP
