@@ -1,4 +1,4 @@
-kmertone <- function(case.coor.path, genome.name="unknown", strand.sensitive, k,
+kmertone <- function(pwd="", case.coor.path, genome.name="unknown", strand.sensitive, k,
                      ctrl.rel.pos, case.pattern=NULL,
                      output.path="data", case.coor=NULL, genome=NULL,
                      genome.path=NULL, rm.case.kmer.overlaps=TRUE,
@@ -94,27 +94,27 @@ kmertone <- function(case.coor.path, genome.name="unknown", strand.sensitive, k,
   suppressPackageStartupMessages( library(data.table)  )
 
   ## Dependant functions #######################################################
-  source("../lib/Kmertone/lib/buildGenome.R")
-  source("../lib/Kmertone/lib/reverseComplement.R")
-  source("../lib/Kmertone/lib/buildCoordinate.R")
-  source("../lib/Kmertone/lib/bedToCoor.R")
-  source("../lib/Kmertone/lib/resolveOverlaps.R")
-  source("../lib/Kmertone/lib/kmerize.R")
-  source("../lib/Kmertone/lib/buildControl.R")
-  source("../lib/Kmertone/lib/removeCaseZone.R")
-  source("../lib/Kmertone/lib/initKmerTable.R")
-  source("../lib/Kmertone/lib/countRevCompKmers.R")
-  source("../lib/Kmertone/lib/extractKmers.R")
-  source("../lib/Kmertone/lib/countKmers.R")
-  source("../lib/Kmertone/lib/scoreKmers.R")
-  source("../lib/Kmertone/lib/saveCoor.R")
-  source("../lib/Kmertone/lib/calKmerSkew.R")
-  source("../lib/Kmertone/lib/A_detectChr.R")
-  source("../lib/Kmertone/lib/A_prepGenome.R")
-  source("../lib/Kmertone/lib/A_prepCoordinate.R")
-  source("../lib/Kmertone/lib/A_getCaseKmers.R")
-  source("../lib/Kmertone/lib/A_getControlKmers.R")
-  source("../lib/Kmertone/lib/A_getScore.R")
+  source(paste0(pwd, "/lib/buildGenome.R"))
+  source(paste0(pwd, "/lib/reverseComplement.R"))
+  source(paste0(pwd, "/lib/buildCoordinate.R"))
+  source(paste0(pwd, "/lib/bedToCoor.R"))
+  source(paste0(pwd, "/lib/resolveOverlaps.R"))
+  source(paste0(pwd, "/lib/kmerize.R"))
+  source(paste0(pwd, "/lib/buildControl.R"))
+  source(paste0(pwd, "/lib/removeCaseZone.R"))
+  source(paste0(pwd, "/lib/initKmerTable.R"))
+  source(paste0(pwd, "/lib/countRevCompKmers.R"))
+  source(paste0(pwd, "/lib/extractKmers.R"))
+  source(paste0(pwd, "/lib/countKmers.R"))
+  source(paste0(pwd, "/lib/scoreKmers.R"))
+  source(paste0(pwd, "/lib/saveCoor.R"))
+  source(paste0(pwd, "/lib/calKmerSkew.R"))
+  source(paste0(pwd, "/lib/A_detectChr.R"))
+  source(paste0(pwd, "/lib/A_prepGenome.R"))
+  source(paste0(pwd, "/lib/A_prepCoordinate.R"))
+  source(paste0(pwd, "/lib/A_getCaseKmers.R"))
+  source(paste0(pwd, "/lib/A_getControlKmers.R"))
+  source(paste0(pwd, "/lib/A_getScore.R"))
 
   dir.create(output.path, showWarnings = FALSE, recursive = TRUE)
   

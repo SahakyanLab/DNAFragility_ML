@@ -131,6 +131,7 @@ for(chr in 1:22){
 
 source("../lib/Kmertone/kmertone.R")
 kmertone(
+    pwd="../../lib/Kmertone",
     case.coor.path="../data/experiments/COSMIC/",
     genome.name="unknown", 
     strand.sensitive=FALSE,

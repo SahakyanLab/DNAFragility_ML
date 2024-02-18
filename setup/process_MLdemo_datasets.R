@@ -5,6 +5,8 @@ suppressPackageStartupMessages(suppressWarnings(library(stringr)))
 
 args = commandArgs(trailingOnly = TRUE)
 my.path = as.character(args[1])
+
+my.path="/Users/paddy/Documents/DPhil/DNAFragility/setup"
 setwd(my.path)
 
 # create chromosome-separated fasta files
@@ -13,7 +15,7 @@ dir.create(path = ref_path, showWarnings = FALSE, recursive = TRUE)
 refseq <- BSgenome.Hsapiens.UCSC.hg19::BSgenome.Hsapiens.UCSC.hg19
 ref_files <- list.files(path = ref_path, pattern = ".fasta.gz")
 
-if(length < 22){
+if(length(ref_files) < 22){
     for(chr in 1:22){
         Biostrings::writeXStringSet(
             Biostrings::DNAStringSet(refseq[[paste0("chr", chr)]]),
@@ -67,7 +69,7 @@ for(x in 1:length(files)){
 }
 
 # run kmertone
-source("../COSMIC/lib/Kmertone/kmertone.R")
+source("../lib/Kmertone/kmertone.R")
 for(x in 1:length(files)){
     dir.create(
         path = paste0("../data/setup/", file_names[x], "/kmertone_scores/"),
@@ -98,6 +100,7 @@ for(x in 1:length(files)){
     control_regions <- c(longest_range, longest_range+1000)
 
     kmertone(
+        pwd="../lib/Kmertone",
         case.coor.path=paste0("../data/setup/", file_names[x], "/kmertone/"),
         genome.name="unknown", 
         strand.sensitive=FALSE,
