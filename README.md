@@ -28,11 +28,12 @@ We retrieved all the somatic mutation data of both the non-coding and coding reg
 
 These versions can be downloaded from the following links:
 * [Non-Coding Variants](https://cancer.sanger.ac.uk/cosmic/download/cosmic/v98/noncodingvariantstsv) as "Cosmic_NonCodingVariants_PROCESSED.tsv"
-* [Cancer Gene Census](https://cancer.sanger.ac.uk/cosmic/download/cosmic/v98/cancergenecensus) as "Cosmic_MutantCensus_PROCESSED.tsv"
+* [Coding Variants](https://cancer.sanger.ac.uk/cosmic/download/cosmic/v98/mutantcensus) as "Cosmic_MutantCensus_PROCESSED.tsv"
+* [Cancer Gene Census](https://cancer.sanger.ac.uk/cosmic/download/cosmic/v98/cancergenecensus) as "Cosmic_CancerGeneCensus_v98_GRCh38.tsv"
 * [Breakpoints](https://cancer.sanger.ac.uk/cosmic/download/cosmic/v98/breakpoints) as "Cosmic_Breakpoints_v98_GRCh38.tsv".
 * [Classification](https://cancer.sanger.ac.uk/cosmic/download/cosmic/v98/classification) as "Cosmic_Classification_v98_GRCh38.tsv"
 
-Unpack and extract the relevant files. Place the contents into [COSMIC/data/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/COSMIC/data/COSMIC) folder. Please note, we renamed the above first two files with the "PROCESSED" suffix, as the files were very large due to the SNPs, hence, we removed them. We suggest you do this too, unless you have sufficient memory to load and process them all.
+Unpack and extract the relevant files. Place the contents into [COSMIC/data/COSMIC/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/COSMIC/data/COSMIC) folder. Please note, we renamed the above first two files with the "PROCESSED" suffix, as the files were very large due to the SNPs, hence, we removed them. We suggest you do this too, unless you have sufficient memory to load and process them all.
 
 ### ClinVar SVs and SNPs
 We obtained SVs and SNPs from the variant_summary.txt.gz file downloaded from the [ClinVar database](https://ftp.ncbi.nlm.nih.gov/pub/clinvar/tab_delimited/variant_summary.txt.gz) accessed on December 6<sup>th</sup> in 2023 that had a clinically associated pathogenic or benign label. Please note, this file gets updated weekly.
@@ -68,6 +69,7 @@ We processed all datasets in the reference genome version used as per the deposi
 
 * [hg17 to hg38](https://hgdownload.cse.ucsc.edu/goldenpath/hg17/liftOver/#:~:text=hg17ToHg38.over.chain.gz)
 * [hg19 to hg38](https://hgdownload.soe.ucsc.edu/goldenPath/hg19/liftOver/#:~:text=hg19ToHg38.over.chain.gz)
+* [hg38 to hg19](https://hgdownload.cse.ucsc.edu/goldenpath/hg38/liftOver/hg38ToHg19.over.chain.gz)
 * [hg38 to T2T](https://hgdownload.gi.ucsc.edu/hubs/GCA/009/914/755/GCA_009914755.4/liftOver/hg38-chm13v2.over.chain.gz)
 
 Unpack and extract the relevant files. Place the contents into [COSMIC/data/liftover/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/COSMIC/data/liftover) folder. 
@@ -76,16 +78,47 @@ Unpack and extract the relevant files. Place the contents into [COSMIC/data/lift
 
 We processed all datasets in the reference genome version used as per the deposition. For Kmertone, the individual fasta files were needed. This GitHub repo is dependent on the results of [DNAFragility_dev](https://github.com/SahakyanLab/DNAFragility_dev), where the reference genomes are downloaded already.
 
-## Other notes
+## 5. `DNAfrAIlib` feature library
+
+The genomic sequence-based octameric features can be downloaded from the [DNAfrAIlib](https://github.com/SahakyanLab/DNAfrAIlib) repo. The quantum mechanical hexameric parameters can be downloaded from [DNAkmerQM](https://github.com/SahakyanLab/DNAkmerQM/tree/master/6-mer).
+
+This has been automatically setup if you run the below bash script.
+
+```bash
+bash get_feature_lib.sh
+```
+
+## 6. Notes on `00_ML_proof_of_concept` folder
+
+To run the `00_ML_proof_of_concept` work, you need to have two datasets downloaded and processed following the method from [DNAFragility_dev](https://github.com/SahakyanLab/DNAFragility_dev). The demonstration used in the paper is based on [this study](https://doi.org/10.1016/j.molcel.2019.05.015) with data deposited on [the GEO database](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE121742). We specifically used [DMSO-treated, endogenous DNA fragility in K562 cells](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM3444988). You can also run it on the [etoposide-treated DNA fragility in K562 cells enriched at topoisomerase II sites](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM3444989).
+
+For any ML task, you require the genomic sequence range of influence for each of the short-, medium-, and long-range effects. Depending on the dataset used, some datasets had to be pre-processed to handle 5'-3' DNA strand breaks. Hence, running the full [DNAFragility_dev](https://github.com/SahakyanLab/DNAFragility_dev) study beforehand is strongly advised.
+
+Alternatively, if you wish to skip the [DNAFragility_dev](https://github.com/SahakyanLab/DNAFragility_dev) process, and just want to process just these DNA strand breaks for the present study, please run the below bash script.
+
+```bash
+bash get_MLdemo_datasets.sh
+```
+
+## 7. Other notes
 
 * All cpp files are interfaced *via* the [Rcpp](https://cran.r-project.org/web/packages/Rcpp/index.html) library in R with `omp.h` when possible. Please ensure you have this installed.
 * `RcppArmadillo.h` and `RcppEigen.h` are necessary for the feature extraction process. Please ensure you have this installed.
-* Various model predictions have been deposited if the compressed file size was within the limit. If you wish to view them, please `gunzip` the files.
+* Various model predictions have been deposited if the compressed file size was within the GitHub file size limit. If you wish to view and/or use them, please `gunzip` the files.
 * When you run the `run_dnafragility.sh` bash script, you will need to include the path to the viennaRNA `RNAFold` programme as the first argument. Some operating systems allow you to interface it directly *via* `RNAfold`, others require the literal path to the programme.
 
-## Run the full DNAFragility_ML study
+## 8. Run all setup files
 
-Please note that many of the calculations were computationally intensive. Most things were run in parallel in smaller batches. However, if you submit the below bash script, it runs all scripts sequentially and can therefore **take several months** to complete.
+If you wish to run all setups, including all the aforementioned bash scripts, please run the below bash script.
+
+```bash
+bash run_all_setup_files.sh
+```
+
+## 9. Run the full DNAFragility_ML study
+
+Please note that many of the calculations were computationally intensive, particularly the `01_LGBM_FullGenome` and `05_DeltaFragility` folders. Most things were run in parallel in smaller batches. However, if you submit the below bash script, it runs all scripts sequentially. This can **take several months** to complete. 
+Most tasks take up several tens to hundreds of GBs worth of RAM. The entire study requires between 2-4 TB of hard drive space. 
 
 You may need to monitor your memory usage, memory cache, and swap to ensure calculations run smoothly.
 
