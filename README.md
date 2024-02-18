@@ -2,6 +2,14 @@
 
 Development and application of the generalised DNA fragility prediction engine based only on sequence-context.
 
+## Setup
+
+Clone the project:
+
+```
+git clone https://github.com/SahakyanLab/DNAFragility.git
+```
+
 ## 1. Software requirements
 The resource-demanding computations were performed on a single NVIDIA RTX A6000 GPU with 40GB RAM. The developed workflows and analyses employed the [R programming language 4.3.2](https://www.r-project.org/) and [Python 3.9.12](https://www.python.org/).
 
@@ -16,8 +24,8 @@ Please also download and install the below software.
 ### Edlib
 * Please clone the repo from [this link](https://github.com/Martinsos/edlib) (Edlib >= 1.2.7). Place the [edlib.h](https://github.com/Martinsos/edlib/tree/master/edlib/include) and [edlib.cpp](https://github.com/Martinsos/edlib/tree/master/edlib/src) into [lib/edlib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib/edlib) and [01_LGBM_FullGenome/lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/01_LGBM_FullGenome/lib/edlib) folders.
 
-### phmap.hpp via gtl
-* Please clone the repo from [this link](https://github.com/greg7mdp/gtl). Place the contents of gtl into [lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib) and [01_LGBM_FullGenome/lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib) folders.
+<!-- ### phmap.hpp via gtl
+* Please clone the repo from [this link](https://github.com/greg7mdp/gtl). Place the contents of gtl into [lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib) and [01_LGBM_FullGenome/lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib) folders. -->
 
 ### Secondary structure folding parameter file
 * Please download the [DNA parameter file](https://github.com/ViennaRNA/ViennaRNA/blob/master/misc/dna_mathews2004.par) and place it into [data/parameters](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/data/parameters) folder.
@@ -103,7 +111,7 @@ bash get_MLdemo_datasets.sh
 ## 7. Other notes
 
 * All cpp files are interfaced *via* the [Rcpp](https://cran.r-project.org/web/packages/Rcpp/index.html) library in R with `omp.h` when possible. Please ensure you have this installed.
-* `RcppArmadillo.h` and `RcppEigen.h` are necessary for the feature extraction process. Please ensure you have this installed.
+* `RcppArmadillo.h` and `RcppEigen.h` are necessary for the feature extraction process. Please ensure you have this installed. By default, will not use it in case you have not installed it.
 * Various model predictions have been deposited if the compressed file size was within the GitHub file size limit. If you wish to view and/or use them, please `gunzip` the files.
 * When you run the `run_dnafragility.sh` bash script, you will need to include the path to the viennaRNA `RNAFold` programme as the first argument. Some operating systems allow you to interface it directly *via* `RNAfold`, others require the literal path to the programme.
 
@@ -122,6 +130,11 @@ Most tasks take up several tens to hundreds of GBs worth of RAM. The entire stud
 
 You may need to monitor your memory usage, memory cache, and swap to ensure calculations run smoothly.
 
+**Arguments**
+
+* `Rnafold_path` path to the RNAfold function for secondary structure prediction.
+* `fast_matrix` If TRUE, will use fast RcppArmadillo matrix calculations. Default FALSE.
+
 ```bash
-bash run_dnafragility.sh $RNAfold_path
+bash run_dnafragility.sh $RNAfold_path $fast_matrix
 ```
