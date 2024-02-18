@@ -10,6 +10,8 @@ Clone the project:
 git clone https://github.com/SahakyanLab/DNAFragility.git
 ```
 
+Please follow the instructions below on how to acquire the public datasets, setup the directory stucture, and software necessary to run all the studies from the publication.  At the end of this `README` file, you can find two separate bash script commands that runs the majority of the setup and runs the calculations sequentially. 
+
 ## 1. Software requirements
 The resource-demanding computations were performed on a single NVIDIA RTX A6000 GPU with 40GB RAM. The developed workflows and analyses employed the [R programming language 4.3.2](https://www.r-project.org/) and [Python 3.9.12](https://www.python.org/).
 
@@ -71,6 +73,15 @@ Unpack and extract the relevant files from above. Place the contents into [COSMI
 
 We obtained the chromothripsis breakpoint cases from ChromothripsisDB. Please download the dataset from Download -> Full Dataset -> [Chromothripsis case data](http://cailab.labshare.cn/ChromothripsisDB/download/)
 
+### Transcription Factor data
+
+We retrieved 247 core-validated vertebrate transcript factor binding sites (TFBS) from the [JASPAR 2024 database](https://jaspar.elixir.no/downloads/).
+
+* Download the [vertebrate dataset from here](https://jaspar.elixir.no/download/data/2024/CORE/JASPAR2024_CORE_vertebrates_redundant_pfms_jaspar.txt)
+* Download the [bed files from here](https://jaspar.elixir.no/download/data/2024/bed.tar.gz) as "jaspar_beds"
+
+Unpack and extract the relevant files from above. Place the contents into [data/TFBS/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/data/JASPAR/) folder. 
+
 ## 3. Liftover files
 
 We processed all datasets in the reference genome version used as per the deposition. When doing comparative analysis, we lifted the genomic coordinates over to the latest T2T genome assembly. 
@@ -102,7 +113,7 @@ To run the `00_ML_proof_of_concept` work, you need to have two datasets download
 
 For any ML task, you require the genomic sequence range of influence for each of the short-, medium-, and long-range effects. Depending on the dataset used, some datasets had to be pre-processed to handle 5'-3' DNA strand breaks. Hence, running the full [DNAFragility_dev](https://github.com/SahakyanLab/DNAFragility_dev) study beforehand is strongly advised.
 
-Alternatively, if you wish to skip the [DNAFragility_dev](https://github.com/SahakyanLab/DNAFragility_dev) process, and just want to process just these DNA strand breaks for the present study, please run the below bash script.
+Alternatively, if you wish to skip the [DNAFragility_dev](https://github.com/SahakyanLab/DNAFragility_dev) process, and just want to process these DNA strand breaks for the present study, please run the below bash script.
 
 ```bash
 bash get_MLdemo_datasets.sh
@@ -113,9 +124,10 @@ bash get_MLdemo_datasets.sh
 * All cpp files are interfaced *via* the [Rcpp](https://cran.r-project.org/web/packages/Rcpp/index.html) library in R with `omp.h` when possible. Please ensure you have this installed.
 * `RcppArmadillo.h` and `RcppEigen.h` are necessary for the feature extraction process. Please ensure you have this installed. By default, will not use it in case you have not installed it.
 * Various model predictions have been deposited if the compressed file size was within the GitHub file size limit. If you wish to view and/or use them, please `gunzip` the files.
+* While this repo can run as a standalone study, the results are dependent on [DNAFragility_dev](https://github.com/SahakyanLab/DNAFragility_dev) and when possible, we have deposited the necessary dependent files. 
 * When you run the `run_dnafragility.sh` bash script, you will need to include the path to the viennaRNA `RNAFold` programme as the first argument. Some operating systems allow you to interface it directly *via* `RNAfold`, others require the literal path to the programme.
 
-## 8. Run all setup files
+## 8.Run all setup files
 
 If you wish to run all setups, including all the aforementioned bash scripts, please run the below bash script.
 
