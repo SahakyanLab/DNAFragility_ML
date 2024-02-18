@@ -193,8 +193,8 @@ t1 <- Sys.time()
 cur.msg <- "Lifting over breaks to T2T version"
 cat(paste0(cur.msg, paste0(rep(".", 70-nchar(cur.msg)), collapse = "")))
 
-hg38_chain <- import.chain("../../05_Cosmic/data/liftover/hg38-chm13v2.over.chain")
-hg19_chain <- import.chain("../../05_Cosmic/data/liftover/hg19ToHg38.over.chain")
+hg38_chain <- import.chain("../data/liftover/hg38-chm13v2.over.chain")
+hg19_chain <- import.chain("../data/liftover/hg19ToHg38.over.chain")
 
 all_df_delta_liftover <- lapply(1:length(col_names), function(x){
     df_delta <- as_tibble(df_all) %>% 
@@ -1060,7 +1060,7 @@ ggsave(
 # get_genic_feat <- function(){
 #     # import all genomic features for analysis
 #     files_to_load <- list.files(
-#         path = "../../05_Cosmic/data/annotations",
+#         path = "../data/annotations",
 #         pattern = "group_*",
 #         full.names = TRUE
 #     )

@@ -145,7 +145,7 @@ get_cosmic_breaks <- function(kmer){
         dplyr::rename_with(~c("seqnames", "start"))
 
     # liftover breakpoints to the telomere-to-telomere genome version
-    chain <- import.chain("../../05_COSMIC/data/liftover/hg38-chm13v2.over.chain")
+    chain <- import.chain("../data/liftover/hg38-chm13v2.over.chain")
     df <- df %>% dplyr::mutate(width = 1, strand = "+")
     df <- plyranges::as_granges(df)
     df <- liftOver(df, chain)

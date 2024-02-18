@@ -59,7 +59,7 @@ seqnames(refseq) <- paste0("chr", seqnames(refseq))
 
 # liftover breakpoints to the telomere-to-telomere genome version
 suppressPackageStartupMessages(suppressWarnings(library(rtracklayer)))
-chain <- import.chain("../data/liftover/hg38-chm13v2.over.chain")
+chain <- import.chain("../../data/liftover/hg38-chm13v2.over.chain")
 df <- df %>% dplyr::mutate(width = 1, strand = "+")
 df <- plyranges::as_granges(df)
 df <- liftOver(df, chain)
@@ -120,19 +120,23 @@ control.regions <- c(ranges[["Long"]], ranges[["Long"]]+1000)
 # create chromosome-separated fasta files
 ref_path <- "../../data/ref/telo_to_telo"
 dir.create(path = ref_path, showWarnings = FALSE, recursive = TRUE)
-for(chr in 1:22){
-    Biostrings::writeXStringSet(
-        Biostrings::DNAStringSet(refseq[[paste0("chr", chr)]]),
-        filepath = paste0(ref_path, "/chr", chr, ".fasta.gz"),
-        format = "fasta",
-        compress = TRUE
-    )
+ref_files <- list.files(path = ref_path, pattern = ".fasta.gz")
+
+if(length(ref_files) < 22){
+    for(chr in 1:22){
+        Biostrings::writeXStringSet(
+            Biostrings::DNAStringSet(refseq[[paste0("chr", chr)]]),
+            filepath = paste0(ref_path, "/chr", chr, ".fasta.gz"),
+            format = "fasta",
+            compress = TRUE
+        )
+    }
 }
 
-source("../lib/Kmertone/kmertone.R")
+source("../../lib/Kmertone/kmertone.R")
 kmertone(
     pwd="../../lib/Kmertone",
-    case.coor.path="../data/experiments/COSMIC/",
+    case.coor.path="../../data/experiments/COSMIC/",
     genome.name="unknown", 
     strand.sensitive=FALSE,
     k=8,

@@ -13,7 +13,7 @@ args <- commandArgs(trailingOnly = TRUE)
 my.path <- as.character(args[1])
 setwd(my.path)
 
-hg19_chain <- import.chain("../../05_Cosmic/data/liftover/hg19ToHg38.over.chain")
+hg19_chain <- import.chain("../data/liftover/hg19ToHg38.over.chain")
 hg38 <- BSgenome.Hsapiens.UCSC.hg38
 hg19 <- BSgenome.Hsapiens.UCSC.hg19
 

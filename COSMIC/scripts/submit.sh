@@ -24,6 +24,6 @@ Rscript 03_ProcessCOSMICBreaks.R $pwd
 mkdir -p ../../data/experiments/COSMIC/control_coordinates
 cp ../data/kmertone/COSMIC/kmertone_scores/control_coordinates/* ../../data/experiments/COSMIC/control_coordinates/
 
-# get single nucleotide positions of human genome
+# # get single nucleotide positions of human genome
 echo "Extract single nucleotide positions of human genome..."
 Rscript 02_Bin_breaks_full_genome.R 1 TRUE 1 FALSE $pwd

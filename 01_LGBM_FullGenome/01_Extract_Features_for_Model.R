@@ -17,14 +17,14 @@ suppressPackageStartupMessages(suppressWarnings(library(arrow)))
 args <- commandArgs(trailingOnly = TRUE)
 my.path <- as.character(args[3])
 setwd(my.path)
-fast_matrix = as.logical(args[4])
+fast_matrix <- as.logical(args[5])
 
 pbapply::pboptions(char = "=", type = "timer")
 options(future.seed = TRUE)
 source("./lib/Breakpoints.R")
 source("./lib/Features.R")
-Rcpp::sourceCpp("./lib/edlibFunction.cpp")
-if(fast_matrix) Rcpp::sourceCpp("./lib/eigenMatrixMultiply.cpp")
+Rcpp::sourceCpp("../lib/edlibFunction.cpp")
+if(fast_matrix) Rcpp::sourceCpp("../lib/eigenMatrixMultiply.cpp")
 
 # Breaks <- Breakpoints$new(
 #     exp="", 
@@ -171,7 +171,7 @@ extract_features <- function(
 
 # global vars
 training_process <- as.logical(args[1])
-RNAfold_path <- as.character(args[3])
+RNAfold_path <- as.character(args[4])
 bw <- as.integer(1)
 num_cores <- 1
 break_type <- "Biological"

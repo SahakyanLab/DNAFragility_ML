@@ -41,10 +41,10 @@ load_motif_mapping <- function(path){
 
 # Load mapping between matrix ID and motif name
 jaspar_motifs <- load_motif_mapping(
-    "../../03_Breakpoints_v2/data/02_JASPAR/JASPAR2024_CORE_vertebrates_redundant_pfms_jaspar.txt"
+    "../data/TFBS/JASPAR2024_CORE_vertebrates_redundant_pfms_jaspar.txt"
 )
-hg38_chain <- import.chain("../../05_Cosmic/data/liftover/hg38-chm13v2.over.chain")
-hg19_chain <- import.chain("../../05_Cosmic/data/liftover/hg19ToHg38.over.chain")
+hg38_chain <- import.chain("../data/liftover/hg38-chm13v2.over.chain")
+hg19_chain <- import.chain("../data/liftover/hg19ToHg38.over.chain")
 
 # Load motifs bams into single object, and make method for anottations
 bed_path <- "../data/TFBS/jaspar_beds"
@@ -146,7 +146,7 @@ refseq.table <- data.table(
 get_cosmic_breaks <- function(kmer){
     df.parsed <- fread(
         file = paste0(
-            "../../05_Cosmic/data/BaseTable/",
+            "../data/BaseTable/",
             "kmer_", kmer, ".csv"
         ),
         select = "ID",
@@ -182,7 +182,7 @@ get_cosmic_breaks <- function(kmer){
         dplyr::rename_with(~c("seqnames", "start"))
 
     # liftover breakpoints to the telomere-to-telomere genome version
-    chain <- import.chain("../../05_COSMIC/data/liftover/hg38-chm13v2.over.chain")
+    chain <- import.chain("../data/liftover/hg38-chm13v2.over.chain")
     df <- df %>% dplyr::mutate(width = 1, strand = "+")
     df <- plyranges::as_granges(df)
     df <- liftOver(df, chain)

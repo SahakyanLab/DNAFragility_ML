@@ -44,7 +44,7 @@ refseq.table <- data.table(
     chromName = rownames(refseq.table),
     chromSize = refseq.table$seqlengths
 )
-t2t_chain <- import.chain("../data/liftover/hg38-chm13v2.over.chain")
+t2t_chain <- import.chain("../../data/liftover/hg38-chm13v2.over.chain")
 
 # transcripts
 all_transcripts <- GenomicFeatures::transcripts(txdb, columns = "gene_id") %>% 
@@ -406,7 +406,7 @@ all_g4 <- as_tibble(all_g4) %>%
     dplyr::mutate(type = "G4_sites") %>% 
     plyranges::as_granges()
 
-hg38_chain <- import.chain("../data/liftover/hg19ToHg38.over.chain")
+hg38_chain <- import.chain("../../data/liftover/hg19ToHg38.over.chain")
 all_g4 <- liftOver(all_g4, hg38_chain)
 all_g4 <- unlist(as(all_g4, "GRangesList"))
 all_g4 <- liftOver(all_g4, t2t_chain)
@@ -439,7 +439,7 @@ all_iso <- all_iso %>%
     ) %>% 
     plyranges::as_granges()
 
-hg17_chain <- import.chain("../data/liftover/hg17ToHg38.over.chain")
+hg17_chain <- import.chain("../../data/liftover/hg17ToHg38.over.chain")
 all_iso <- liftOver(all_iso, hg17_chain)
 all_iso <- unlist(as(all_iso, "GRangesList"))
 all_iso <- liftOver(all_iso, t2t_chain)
@@ -469,8 +469,6 @@ cat("DONE! --", signif(total.time[[1]], 2),
 
 ##########################################################################################
 #' group 4
-gc(verbose = FALSE)
-
 # From https://github.com/marbl/CHM13/tree/master#repeat-annotation
 # Download from: https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/annotation/chm13v2.0_RepeatMasker_4.1.2p1.2022Apr14.bed
 
