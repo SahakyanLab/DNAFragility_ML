@@ -7,7 +7,7 @@ Development and application of the generalised DNA fragility prediction engine b
 Clone the project:
 
 ```
-git clone https://github.com/SahakyanLab/DNAFragility.git
+git clone https://github.com/SahakyanLab/DNAFragility_ML.git
 ```
 
 Please follow the instructions below on how to acquire the public datasets, setup the directory stucture, and software necessary to run all the studies from the publication.  At the end of this `README` file, you can find two separate bash script commands that runs the majority of the setup and runs the calculations sequentially. 
@@ -26,11 +26,20 @@ Please also download and install the below software.
 ### Edlib
 * Please clone the repo from [this link](https://github.com/Martinsos/edlib) (Edlib >= 1.2.7). Place the [edlib.h](https://github.com/Martinsos/edlib/tree/master/edlib/include) and [edlib.cpp](https://github.com/Martinsos/edlib/tree/master/edlib/src) into [lib/edlib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib/edlib) folder.
 
-<!-- ### phmap.hpp via gtl
-* Please clone the repo from [this link](https://github.com/greg7mdp/gtl). Place the contents of gtl into [lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib) and [01_LGBM_FullGenome/lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib) folders. -->
-
 ### Secondary structure folding parameter file
 * Please download the [DNA parameter file](https://github.com/ViennaRNA/ViennaRNA/blob/master/misc/dna_mathews2004.par) and place it into [data/parameters](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/data/parameters) folder.
+
+### `ggpattern`
+
+Please note, if you are using Ubuntu, you may have trouble installing the [ggpattern](https://github.com/trevorld/ggpattern) R package. However, the below steps has worked for us. 
+
+1. sudo apt-get install libmagick++-dev
+2. sudo apt install libgdal-dev
+3. sudo apt-get install -y libudunits2-dev
+4. install.packages("units")
+5. install.packages("sf")
+6. install.packages("gridpattern")
+7. install.packages("ggpattern")
 
 ## 2. Public files to download
 ### Cancer-associated DNA strand breaks
@@ -73,7 +82,7 @@ Unpack and extract the relevant files from above. Place the contents into [COSMI
 
 We obtained the chromothripsis breakpoint cases from ChromothripsisDB. Please download the dataset from Download -> Full Dataset -> [Chromothripsis case data](http://cailab.labshare.cn/ChromothripsisDB/download/)
 
-Unpack and extract the relevant files from above. Place the contents into [03_Chromothripsis/data](https://github.com/SahakyanLab/DNAFragility/tree/master/03_Chromothripsis/data) folder.
+Unpack and extract the relevant files from above. Place the contents into [03_Chromothripsis/data](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/03_Chromothripsis/data) folder.
 
 ### Transcription Factor data
 
