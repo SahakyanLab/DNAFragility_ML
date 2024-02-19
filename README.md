@@ -33,13 +33,14 @@ Please also download and install the below software.
 
 Please note, if you are using Ubuntu, you may have trouble installing the [ggpattern](https://github.com/trevorld/ggpattern) R package. However, the below steps has worked for us. 
 
-1. sudo apt-get install libmagick++-dev
-2. sudo apt install libgdal-dev
-3. sudo apt-get install -y libudunits2-dev
-4. install.packages("units")
-5. install.packages("sf")
-6. install.packages("gridpattern")
-7. install.packages("ggpattern")
+1. sudo apt-get update
+2. sudo apt-get install libmagick++-dev
+3. sudo apt install libgdal-dev
+4. sudo apt-get install -y libudunits2-dev
+5. install.packages("units")
+6. install.packages("sf")
+7. install.packages("gridpattern")
+8. install.packages("ggpattern")
 
 ## 2. Public files to download
 ### Cancer-associated DNA strand breaks
