@@ -24,7 +24,7 @@ bash ./setup/install_packages.sh
 Please also download and install the below software.
 
 ### Edlib
-* Please clone the repo from [this link](https://github.com/Martinsos/edlib) (Edlib >= 1.2.7). Place the [edlib.h](https://github.com/Martinsos/edlib/tree/master/edlib/include) and [edlib.cpp](https://github.com/Martinsos/edlib/tree/master/edlib/src) into [lib/edlib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib/edlib) and [01_LGBM_FullGenome/lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/01_LGBM_FullGenome/lib/edlib) folders.
+* Please clone the repo from [this link](https://github.com/Martinsos/edlib) (Edlib >= 1.2.7). Place the [edlib.h](https://github.com/Martinsos/edlib/tree/master/edlib/include) and [edlib.cpp](https://github.com/Martinsos/edlib/tree/master/edlib/src) into [lib/edlib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib/edlib) folder.
 
 <!-- ### phmap.hpp via gtl
 * Please clone the repo from [this link](https://github.com/greg7mdp/gtl). Place the contents of gtl into [lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib) and [01_LGBM_FullGenome/lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/lib) folders. -->
@@ -72,6 +72,8 @@ Unpack and extract the relevant files from above. Place the contents into [COSMI
 ### Chromothripsis breakpoint events
 
 We obtained the chromothripsis breakpoint cases from ChromothripsisDB. Please download the dataset from Download -> Full Dataset -> [Chromothripsis case data](http://cailab.labshare.cn/ChromothripsisDB/download/)
+
+Unpack and extract the relevant files from above. Place the contents into [03_Chromothripsis/data](https://github.com/SahakyanLab/DNAFragility/tree/master/03_Chromothripsis/data) folder.
 
 ### Transcription Factor data
 
