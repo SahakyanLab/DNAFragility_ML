@@ -131,7 +131,60 @@ Alternatively, if you wish to skip the [DNAFragility_dev](https://github.com/Sah
 bash get_MLdemo_datasets.sh
 ```
 
-## 7. Other notes
+## Optional additional studies
+
+### *De novo* motif discovery with `Homer`
+
+We used the `Homer` software for motif discoveries, including *de novo* ones. We use the R package `marge` to interface with `Homer`.
+
+To install `marge`, please follow the instructions [from the GitHub page here](https://github.com/robertamezquita/marge).
+
+`Marge` relies on a local installation of `Homer`. To install for your operating system, please follow the instructions [from their website here](http://homer.ucsd.edu/homer/introduction/install.html).
+
+Inside the [09_HOMER/lib/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/09_HOMER/lib/) environment, we used the below commands.
+
+```bash
+# In the terminal, we used the following commands.
+mkdir lib
+wget -P lib/ http://homer.ucsd.edu/homer/configureHomer.pl
+perl /path-to-homer/configureHomer.pl -install homer
+perl /path/to/homer/configureHomer.pl -install hg19 
+vi ~/.bashrc
+PATH=$PATH:/path/to/homer/lib
+source ~/.bashrc
+```
+
+In the [09_HOMER/Process.R](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/09_HOMER/Proces.R) file, we used the below commands.
+
+```R
+# In the R environment, we used the following commands.
+devtools::install_github('robertamezquita/marge', ref = "master", force = TRUE)
+homer_path = "/path/to/homer/lib"
+
+options('homer_path' = homer_path)
+library(marge)
+check_homer()
+```
+
+If the above steps have been successfully implemented, you can run this optional study by going into the [09_HOMER/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/09_HOMER/) folder, then running the below bash script. Please edit the `homer_path` inside this file to the path of your saved location.
+
+```bash
+bash submit.sh
+```
+
+### Nullomer sequence fragility
+
+Here, we use 13 statistically significant nullomer sequences from [this paper](https://doi.org/10.1093/nar/gkab139) and downloaded [from here](https://www.nullomers.org/) on 1st Feb 2024. Under Download, select `Genomic MAWs`. Download the `Genomic_MAWs.tsv` file and place it into [06_Nullomers/data/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/06_Nullomers/data/) folder.
+
+The workflow was the following. First, we wanted to evaluate whether nullomer sequences can bring fragility to a genomic region. Second, we wanted to pinpoint this to the nullomer sequence specifically, by searching for sequences in the human genome that mismatch by 1 base to the nullomer, introduce a SNP to generate the nullomer, and evaluate the change in sequence fragility.
+
+If the above steps have been successfully implemented, you can run this optional study by going into the [06_Nullomers/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/06_Nullomers/) folder, then running the below bash script.
+
+```bash
+bash submit.sh
+```
+
+## Other notes
 
 * All cpp files are interfaced *via* the [Rcpp](https://cran.r-project.org/web/packages/Rcpp/index.html) library in R with `omp.h` when possible. Please ensure you have this installed.
 * `RcppArmadillo.h` and `RcppEigen.h` are necessary for the feature extraction process. Please ensure you have this installed. By default, will not use it in case you have not installed it.
@@ -139,7 +192,7 @@ bash get_MLdemo_datasets.sh
 * While this repo can run as a standalone study, the results are dependent on [DNAFragility_dev](https://github.com/SahakyanLab/DNAFragility_dev) and when possible, we have deposited the necessary dependent files. 
 * When you run the `run_dnafragility.sh` bash script, you will need to include the path to the viennaRNA `RNAFold` programme as the first argument. Some operating systems allow you to interface it directly *via* `RNAfold`, others require the literal path to the programme.
 
-## 8.Run all setup files
+## Run all setup files
 
 If you wish to run all setups, including all the aforementioned bash scripts, please run the below bash script.
 
@@ -147,7 +200,7 @@ If you wish to run all setups, including all the aforementioned bash scripts, pl
 bash run_all_setup_files.sh
 ```
 
-## 9. Run the full DNAFragility_ML study
+## Run the full DNAFragility_ML study
 
 Please note that many of the calculations were computationally intensive, particularly the `01_LGBM_FullGenome` and `05_DeltaFragility` folders. Most things were run in parallel in smaller batches. However, if you submit the below bash script, it runs all scripts sequentially. This can **take several months** to complete. 
 Most tasks take up several tens to hundreds of GBs worth of RAM. The entire study requires between 2-4 TB of hard drive space. 
