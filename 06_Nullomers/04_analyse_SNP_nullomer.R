@@ -150,5 +150,5 @@ p_values <- res_summary %>%
 
 fwrite(
     as.data.table(p_values), 
-    "./SNP_pvalues.csv"
+    "./data/SNP_pvalues.csv"
 )
