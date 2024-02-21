@@ -20,8 +20,10 @@ args = parser.parse_args()
 chr_num = None
 if args.SV_type == 'SNP':
     dir_path = '../data/SNP_nullomer_sequence_SNPs'
-elif args.SV_type == 'Not_SNP':
+elif args.SV_type == 'Shuffle':
     dir_path = '../data/nullomer_and_shuffle'
+elif args.SV_type == 'Genome':
+    dir_path = '../data/nullomer_and_genome'
 
 path_to_data = []
 for d in os.listdir(dir_path):
@@ -52,7 +54,7 @@ for i, dest_path in enumerate(path_to_data):
             positions_pattern='Present_positions',
             model_file='best_LGBM_model.txt'
         )
-    elif args.SV_type == 'Not_SNP':
+    else:
         model = DNAFragilityModel(
             path_to_data=dest_path,
             path_to_save=dest_path,
