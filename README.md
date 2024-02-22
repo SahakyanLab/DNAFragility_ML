@@ -135,9 +135,9 @@ bash get_MLdemo_datasets.sh
 
 ### *De novo* motif discovery with `Homer`
 
-We used the `Homer` software for motif discoveries, including *de novo* ones. We use the R package `marge` to interface with `Homer`.
+We used the `Homer` software for motif discoveries, including *de novo* ones. We use the R package `marge` to interface with `Homer`. Below are two suggestions of downloading and installing the relevant source codes, as `Option 1` may fail, depending on your operating system.
 
-To install `marge`, please follow the instructions [from the GitHub page here](https://github.com/robertamezquita/marge).
+**Option 1.** To install `marge`, please follow the instructions [from the GitHub page here](https://github.com/robertamezquita/marge).
 
 `Marge` relies on a local installation of `Homer`. To install for your operating system, please follow the instructions [from their website here](http://homer.ucsd.edu/homer/introduction/install.html).
 
@@ -164,6 +164,21 @@ homer_path = "/path/to/homer/lib"
 options('homer_path' = homer_path)
 library(marge)
 check_homer()
+```
+
+**Option 2.** Depending on your operating system, the above installation may not work. Below is a workaround that has worked in our case. Download the ZIP master file [from the GitHub page here](https://github.com/robertamezquita/marge). Then, inside `marge-master/R/check_homer.R`, change the following line from `loc <- system('type -a findMotifsGenome.pl', intern = TRUE)` to `loc <- system('type findMotifsGenome.pl', intern = TRUE)`. Then, run the below.
+
+```R
+# path to local master R package from GitHub
+path_to_file = "path/to/marge-master"
+
+devtools::install(
+  pkg = path_to_file,
+  quiet = FALSE,
+  force = TRUE
+)
+
+library(marge)
 ```
 
 If the above steps have been successfully implemented, you can run this optional study by going into the [09_HOMER/](https://github.com/SahakyanLab/DNAFragility_ML/tree/master/09_HOMER/) folder, then running the below bash script. Please edit the `homer_path` inside this file to the path of your saved location.
