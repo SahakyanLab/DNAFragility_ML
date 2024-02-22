@@ -167,14 +167,26 @@ dir.create(
     path = "../figures/HOMER",
     showWarnings = FALSE
 )
-plot_denovo <- denovo %>% 
+denovo_motifs <- denovo %>% 
     dplyr::select(consensus, log_p_value, tgt_pct, bgd_pct) %>% 
-    dplyr::filter(!grepl(pattern = "N", x = consensus)) %>%     
+    dplyr::filter(!grepl(pattern = "N", x = consensus)) %>%
     dplyr::filter(is.finite(log_p_value)) %>% 
     dplyr::arrange(log_p_value) %>% 
-    dplyr::mutate(ID = paste0(consensus, "_", tgt_pct*100, "%")) %>%  
+    dplyr::mutate(ID = paste0(consensus, "_", tgt_pct*100, "%"))
+
+fwrite(
+    known_motifs, 
+    paste0("./data/HOMER/", exp, "/denovo_motifs_pvalues.csv")
+)
+
+plot_denovo <- denovo_motifs %>%  
     dplyr::filter(log_p_value >= 50) %>% 
-    ggplot(aes(x = log_p_value, y = forcats::fct_inorder(ID))) +
+    dplyr::mutate(ID = forcats::fct_inorder(ID)) %>% 
+    ggplot(aes(x = log_p_value, y = ID)) +
+    geom_segment(aes(
+        x = 0, xend = log_p_value,
+        y = ID, yend = ID
+    ), color = "grey80", linewidth = 1.1) + 
     geom_point(size = 2.3) +
     geom_vline(xintercept = -log10(0.05), col = "red") + 
     theme_bw() + 
@@ -189,6 +201,7 @@ plot_denovo <- denovo %>%
         x = "-log10 p-values",
         y = "Consensus motif w/target pct"
     )
+    
 ggsave(
     filename = paste0(
         "../figures/HOMER/", exp,
@@ -197,7 +210,7 @@ ggsave(
     height = 10, width = 7
 )
 
-plot_known_seq <- known %>% 
+known_motifs <- known %>% 
     dplyr::select(motif_name, consensus, log_p_value, tgt_pct, bgd_pct) %>% 
     dplyr::filter(!grepl(pattern = "N", x = consensus)) %>%     
     dplyr::filter(is.finite(log_p_value)) %>% 
@@ -207,14 +220,27 @@ plot_known_seq <- known %>%
     ) %>% 
     dplyr::filter(log_p_value >= 50) %>% 
     dplyr::arrange(log_p_value) %>% 
-    dplyr::mutate(ID = paste0(motif_name, "_", tgt_pct, "%")) %>%  
-    ggplot(aes(x = log_p_value, y = forcats::fct_inorder(ID))) +
+    dplyr::mutate(ID = paste0(motif_name, "_", tgt_pct, "%"))
+
+fwrite(
+    known_motifs, 
+    paste0("./data/HOMER/", exp, "/known_motifs_pvalues.csv")
+)
+
+plot_known_seq <- known_motifs %>% 
+    dplyr::slice(1:50) %>%
+    dplyr::mutate(ID = forcats::fct_inorder(ID)) %>%  
+    ggplot(aes(x = log_p_value, y = ID)) +
+    geom_segment(aes(
+        x = 0, xend = log_p_value,
+        y = ID, yend = ID
+    ), color = "grey80", linewidth = 1.1) + 
     geom_point(size = 2.3) +
     geom_vline(xintercept = -log10(0.05), col = "red") + 
     theme_bw() + 
     theme_classic() + 
     labs(
-        title = "Known motifs",
+        title = "Top 50 known motifs",
         x = "-log10 p-values",
         y = "Consensus motif w/target pct"
     )
