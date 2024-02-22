@@ -102,12 +102,16 @@ dir.create("./data", showWarnings = FALSE)
 #' vi ~/.bashrc
 #' PATH=$PATH:/media/hert6114/Paddy_5TB/ProjectBoard_Patrick/04_DNAFragility/09_HOMER/lib/.//bin/
 #' source ~/.bashrc
-#' devtools::install_github('robertamezquita/marge', ref = "master", force = TRUE)
-#' homer_path = "/media/hert6114/Paddy_5TB/ProjectBoard_Patrick/04_DNAFragility/09_HOMER/lib"
+#' path_to_file = "/home/imm/hert6114/R/x86_64-pc-linux-gnu-library/4.3/marge-master"
+#' devtools::install(
+#'      pkg = path_to_file,
+#'      quiet = FALSE,
+#'      force = TRUE
+#' )
 options('homer_path' = homer_path)
 suppressPackageStartupMessages(library(marge))
-# check_homer()
-# list_homer_packages()
+check_homer()
+list_homer_packages()
 
 # save files for HOMER
 plyranges::write_bed(
@@ -148,12 +152,12 @@ files_moved <- lapply(files_to_mv, function(f){
 })
 
 # read the motifs
-known <- read_known_results(
+known <- marge::read_known_results(
         path = paste0("./data/HOMER/", exp), 
         homer_dir = TRUE
     ) %>% 
     suppressWarnings()
-denovo <- read_denovo_results(
+denovo <- marge::read_denovo_results(
         path = paste0("./data/HOMER/", exp), 
         homer_dir = TRUE
     ) %>% 
