@@ -36,19 +36,26 @@ sequence <- Biostrings::readDNAStringSet(
 seq_lens <- width(sequence)
 
 # import predictions
-pred_files <- list.files(
-    path = paste0("../data/nullomer_and_", name),
-    pattern = "final_pred",
-    full.names = TRUE,
-    recursive = TRUE
+# pred_files <- list.files(
+#     path = paste0("../data/nullomer_and_", name),
+#     pattern = "final_pred",
+#     full.names = TRUE,
+#     recursive = TRUE
+# )
+pred_files <- ifelse(
+    shuffle, 
+    "./data/nullomer_and_shuffle.csv", 
+    "./data/nullomer_and_genome.csv"
 )
+pred_files <- fread(pred_files, header = FALSE)
+pred_files <- pred_files$V1
 pred_names <- stringr::str_extract(
     string = pred_files,
     pattern = paste0("(Nullomer|", upper_name, ")")
 )
 
 res <- pbapply::pblapply(1:length(pred_names), function(x){
-    prediction <- arrow::read_parquet(pred_files[x])
+    prediction <- arrow::read_parquet(paste0("../data/", pred_files[x]))
     prediction <- dplyr::select(prediction, -True)
     colnames(prediction) <- gsub("\\.", "_", colnames(prediction))
     
@@ -77,7 +84,8 @@ res_all <- as_tibble(res_all) %>%
     dplyr::mutate(
         Key = plot_titles[Key],
         Key = forcats::fct_inorder(Key)
-    )
+    ) %>% 
+    tidyr::drop_na()
 
 p1 <- res_all %>% 
     dplyr::mutate(Sequence = factor(Sequence, 
@@ -85,24 +93,27 @@ p1 <- res_all %>%
     )) %>%
     ggplot(aes(x = Sequence, y = Value, fill = Sequence)) + 
     geom_boxplot(
-        outlier.shape = NA,
+        # outlier.shape = NA,
         col = "black",
-        alpha = 0.75
+        alpha = 0.75,
+        outlier.color = "#414a4c",
+        outlier.alpha = 0.1
     ) + 
-    geom_jitter(
-        width = 0.1, 
-        alpha = 0.3
-    ) + 
+    # geom_jitter(
+    #     width = 0.1, 
+    #     alpha = 0.3
+    # ) + 
     ggsignif::geom_signif(
         comparisons = list(c("Nullomer", upper_name)),
         map_signif_level = TRUE,
         textsize = 5,
         vjust = -0.1,
-        margin_top = 0.5,
+        y_position = 1,
         tip_length = 0
     ) +
     facet_wrap(vars(Key), nrow = 1) + 
-    coord_cartesian(ylim = c(0,1)) + 
+    coord_cartesian(ylim = c(0,1.1)) +
+    scale_y_continuous(limits = c(0, 1.1), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0)) +
     scale_fill_manual(values = c("#e07b00", "#004ead")) + 
     theme_bw() + 
     theme_classic() + 
@@ -111,7 +122,7 @@ p1 <- res_all %>%
         subtitle = paste0(
             "Fragility of nullomer-generated sequences vs. ",
             ifelse(shuffle, 
-                "against its own shuffled version"
+                "against its own shuffled version",
                 "sampled from human genome"
             )
         ),
