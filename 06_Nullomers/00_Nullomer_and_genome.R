@@ -47,16 +47,6 @@ ranges <- NULL
 kmer_window <- 5
 cores <- 1
 
-calculate_gc_content <- function(sequences){
-    letter_counts <- Biostrings::letterFrequency(
-        Biostrings::DNAStringSet(sequences),
-        letters = "ACGT", OR = 0
-    )
-    letter_counts_norm <- letter_counts / width(sequences)
-    gc_content <- letter_counts_norm[, "G"]+letter_counts_norm[, "C"]
-    gc_content <- as.numeric(gc_content) * 100
-    return(gc_content)
-}
 round_to_nearest_even <- function(x) round(x/2)*2
 
 set.seed(seed)
@@ -66,25 +56,30 @@ all_sequences <- pbapply::pblapply(1:repeats, function(x){
         size = sample_size, 
         replace = TRUE
     )
+    
     nullomer_sequence <- paste0(
         nullomer_subset, 
         collapse = ""
     )
-    gc_content <- calculate_gc_content(nullomer_sequence)
+
+    letter_counts <- Biostrings::letterFrequency(
+        Biostrings::DNAStringSet(nullomer_sequence),
+        letters = "ACGT", OR = 0
+    )
+    letter_counts <- letter_counts * 100 / width(nullomer_sequence)
 
     return(list(
         "Nullomer" = nullomer_sequence,
-        "GC_content" = gc_content
+        "base_content" = letter_counts
     ))
 })
 all_sequences <- do.call(c, all_sequences)
 
 nullomer_ind <- which("Nullomer" == names(all_sequences))
-gc_ind <- which("GC_content" == names(all_sequences))
+base_ind <- which("base_content" == names(all_sequences))
 
-nullomer_gc_content <- unlist(all_sequences[gc_ind], use.names = FALSE)
-nullomer_gc_range <- range(nullomer_gc_content)
-nullomer_gc_range <- round_to_nearest_even(nullomer_gc_range)
+nullomer_base_content <- do.call(rbind, all_sequences[base_ind])
+nullomer_base_range <- round_to_nearest_even(nullomer_base_content)
 
 # symmetrical ones, sum of 3 mutation rates, average heptameric to octameric
 nullomer_sequence <- unlist(as(
@@ -95,7 +90,7 @@ names(nullomer_sequence) <- paste0("Nullomer_", 1:length(nullomer_sequence))
 # subsample lots of sequences from the human genome, retain those with the same GC content
 genome_attr <- attr(genome, "seqinfo")
 genome_lens <- attr(genome_attr, "seqlengths")[1:22]
-N_subsample <- 300000
+N_subsample <- 1000000
 seq_len <- round_to_nearest_even(mean(width(nullomer_sequence)))
 
 which_chr <- sample(x = 1:22, size = N_subsample, replace = TRUE)
@@ -119,13 +114,22 @@ ref_sequences <- Biostrings::getSeq(genome, sample_dt)
 names(ref_sequences) <- seq_names
 ref_sequences <- unique(ref_sequences)
 
-# filter for the sequences within the tolerance of GC values
-ref_sequence_gc <- calculate_gc_content(ref_sequences)
-ref_sequence_gc <- round_to_nearest_even(ref_sequence_gc)
-to_keep <- which(
-    ref_sequence_gc >= min(nullomer_gc_range) & 
-    ref_sequence_gc <= max(nullomer_gc_range)
+# filter for the sequences within the tolerance of base composition values
+ref_sequence_base <- Biostrings::letterFrequency(
+    Biostrings::DNAStringSet(ref_sequences),
+    letters = "ACGT", OR = 0
 )
+ref_sequence_base <- ref_sequence_base * 100 / width(ref_sequences)
+ref_sequence_base <- round_to_nearest_even(ref_sequence_base)
+unique_nullomer_base_range <- unique(nullomer_base_range)
+
+to_keep <- which(
+    (ref_sequence_base[,"A"] %in% unique_nullomer_base_range[,"A"]) &
+    (ref_sequence_base[,"T"] %in% unique_nullomer_base_range[,"T"]) &
+    (ref_sequence_base[,"G"] %in% unique_nullomer_base_range[,"G"]) &
+    (ref_sequence_base[,"C"] %in% unique_nullomer_base_range[,"C"]) 
+)
+
 ref_sequences <- ref_sequences[to_keep]
 seq_names <- seq_names[to_keep]
 

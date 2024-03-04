@@ -44,7 +44,7 @@ seq_lens <- width(sequence)
 # )
 pred_files <- ifelse(
     shuffle, 
-    "./data/nullomer_and_shuffle.csv", 
+    "./data/nullomer_and_shuffle.csv",
     "./data/nullomer_and_genome.csv"
 )
 pred_files <- fread(pred_files, header = FALSE)
@@ -55,7 +55,9 @@ pred_names <- stringr::str_extract(
 )
 
 res <- pbapply::pblapply(1:length(pred_names), function(x){
-    prediction <- arrow::read_parquet(paste0("../data/", pred_files[x]))
+    prediction <- arrow::read_parquet(paste0(
+        paste0(base_folder, pred_files[x])
+    ))
     prediction <- dplyr::select(prediction, -True)
     colnames(prediction) <- gsub("\\.", "_", colnames(prediction))
     
