@@ -9,6 +9,7 @@ wget ./data https://rvdb.dbi.udel.edu/download/C-RVDBvCurrent.fasta.gz
 
 # process sequences and extract features
 Rscript 00_Process_sequences.R $pwd $RNAfold_path $fast_matrix
+Rscript 01_Shuffle_Cancer_Viruses.R $pwd $RNAfold_path $fast_matrix
 
 # get file names
 cd ../data/
@@ -21,3 +22,4 @@ bash predict_viruses.sh
 
 # analyse results
 Rscript 02_analyse_predictions.R $pwd
+Rscript 03_analyse_shuffle_predictions.R $pwd

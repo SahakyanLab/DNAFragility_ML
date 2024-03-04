@@ -669,7 +669,7 @@ pdf(
 gridExtra::grid.arrange(
     main_title, sub_title, 
     combined_plots,
-    heights = c(0.9, 0.4, 12) # Adjust these values as needed
+    heights = c(0.9, 0.4, 12)
 )
 plot.saved <- dev.off()
 

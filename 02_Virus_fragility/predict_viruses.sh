@@ -2,10 +2,9 @@
 
 source activate fragility_model
 
-# # predict randomly generated DNA virus sequences
-# python predict_viruses.py --random True
-
-# predict DNA virus sequences
-python predict_viruses.py --random False
+for rand in "" "--random"
+do
+    python predict_viruses.py $rand
+done
 
 conda deactivate

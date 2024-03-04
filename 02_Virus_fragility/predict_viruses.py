@@ -11,13 +11,15 @@ parser = argparse.ArgumentParser(
     description="Predict DNA fragility at single-base resolution"
 )
 parser.add_argument(
-    "-rand", "--random", required=True,
-    type=bool, help="Processing true or randomly generated DNA virus sequences"
+    "--random", 
+    action=argparse.BooleanOptionalAction, 
+    default=False,
+    help="Processing true or randomly generated DNA virus sequences"
 )
 args = parser.parse_args()
 
 # global variables
-dir_path = '../data/human_viruses/' if args.random else '../data/human_viruses_shuffle/'    
+dir_path = '../data/human_viruses_shuffle/' if args.random else '../data/human_viruses/'
 custom_result_prefix = None
 chr_num = None
 
