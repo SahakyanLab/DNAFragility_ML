@@ -1,11 +1,11 @@
 # Load in all the cosmic mutations, work out a grouping, then do mutations and
 # plot deltaRTs with those groupings
-suppressPackageStartupMessages(suppressWarnings(library(data.table)))
-suppressPackageStartupMessages(suppressWarnings(library(dplyr)))
-suppressPackageStartupMessages(suppressWarnings(library(stringr)))
-suppressPackageStartupMessages(suppressWarnings(library(ggplot2)))
-suppressPackageStartupMessages(suppressWarnings(library(plyranges)))
-suppressPackageStartupMessages(suppressWarnings(library(Biostrings)))
+suppressPackageStartupMessages(library(data.table))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(stringr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(plyranges))
+suppressPackageStartupMessages(library(Biostrings))
 pbapply::pboptions(char = "=", type = "txt")
 data.table::setDTthreads(threads = 2)
 
@@ -19,12 +19,11 @@ my.path = as.character(args[5])
 setwd(my.path)
 constant = 1
 kmer = 8
-chrs = 1
 
 get_data <- function(){
     df.parsed <- fread(
         file = paste0(
-            "../data/BaseTable/",
+            "../05_Cosmic/data/BaseTable/",
             "kmer_", kmer, ".csv"
         ),
         select = "ID",
@@ -75,7 +74,7 @@ refseq <- BSgenome.Hsapiens.NCBI.T2T.CHM13v2.0::BSgenome.Hsapiens.NCBI.T2T.CHM13
 
 # liftover breakpoints to the telomere-to-telomere genome version
 suppressPackageStartupMessages(suppressWarnings(library(rtracklayer)))
-chain <- import.chain("../../data/liftover/hg38-chm13v2.over.chain")
+chain <- import.chain("../05_Cosmic/data/liftover/hg38-chm13v2.over.chain")
 df <- df %>% dplyr::mutate(width = 1, strand = "+")
 df <- plyranges::as_granges(df)
 df <- liftOver(df, chain)
@@ -110,7 +109,7 @@ refseq.table[, start := pbapply::pbsapply(chr, find_non_N_positions)]
 setcolorder(refseq.table, c("chr", "start", "end"))
 
 # count cosmic breaks in non-overlapping windows and return granges 
-df_bp_granges <- pbapply::pblapply(chrs, function(chr){
+df_bp_granges <- pbapply::pblapply(1:22, function(chr){
     # create bins
     temp_chr <- refseq.table[chr, ] 
     bins <- seq(temp_chr$start, temp_chr$end, by = bw)
@@ -135,7 +134,6 @@ df_bp_granges <- pbapply::pblapply(chrs, function(chr){
         )
         bin_ends <- bin_starts+bw-1
 
-        # Adjust the end of the last bin if necessary
         bin_ends[length(bin_ends)] <- pmax(bin_ends[length(bin_ends)], temp_chr$end)
 
         df_bp_granges <- GRanges(
@@ -177,7 +175,7 @@ df_bp_granges <- pbapply::pblapply(chrs, function(chr){
 })
 
 if(bw == 1){
-    out <- pbapply::pblapply(chrs, function(chr){
+    out <- pbapply::pblapply(1:22, function(chr){
         dt <- as.data.table(df_bp_granges[[chr]])
         dt[, `:=`(seqnames = NULL, end = NULL, width = NULL, strand = NULL)]
         setnames(dt, c("start.pos", "Breaks"))
@@ -190,7 +188,7 @@ if(bw == 1){
         dt[, chunks := rep(1:num_chunks, each = chunk_size)[1:nr_rows]]
         
         path_to_dir <- paste0(
-            "../../data/experiments/FullGenomeChunks/",
+            "../data/experiments/FullGenomeChunks/",
             "breakpoint_positions/chr", chr
         )
         dir.create(path = path_to_dir, showWarnings = FALSE, recursive = TRUE)
@@ -209,7 +207,7 @@ if(bw == 1){
 } else {
     df_bp_granges_all <- suppressWarnings(unlist(as(df_bp_granges, "GRangesList")))
 
-    base_dir <- "../../07_DeepLearning_Trials"
+    base_dir <- "../figures"
     df_breaks <- tibble(Breaks = log2(constant+mcols(df_bp_granges_all)$Breaks))
     p1 <- df_breaks %>% 
         ggplot(aes(x = Breaks, y = after_stat(density))) + 
@@ -218,9 +216,12 @@ if(bw == 1){
         theme_classic() + 
         labs(x = "Number of breaks (log)", y = "Density")
         
-    dir.create(path = paste0(base_dir, "/figures/"), showWarnings = FALSE)
+    dir.create(path = paste0(base_dir, "/DeepLearning_Trials/"), showWarnings = FALSE)
     ggsave(
-        filename = paste0(base_dir, "/figures/density.pdf"),
+        filename = paste0(
+            base_dir, "/DeepLearning_Trials/", 
+            "Density_bw_", bw, ".pdf"
+        ),
         plot = p1
     )
 
@@ -234,9 +235,9 @@ if(bw == 1){
         labs(x = "Number of breaks", y = "Density")
 
     # save for regional breakpoint prediction ML
-    base_dir <- "../../data/experiments/FullGenome_DeepLearning/breakpoint_positions"
+    base_dir <- "../data/experiments/FullGenome_DeepLearning/breakpoint_positions"
     dir.create(path = base_dir, showWarnings = FALSE, recursive = TRUE)
-    out <- lapply(chrs, function(chr){
+    out <- lapply(1:22, function(chr){
         dt <- as_tibble(df_bp_granges_all) %>% 
             dplyr::filter(seqnames == paste0("chr", chr)) %>% 
             dplyr::mutate(start = start+ceiling((end-start)/2)-1) %>% 
