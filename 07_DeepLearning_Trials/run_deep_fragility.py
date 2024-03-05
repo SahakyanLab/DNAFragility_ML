@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from sklearn.preprocessing import StandardScaler
 from scipy.stats import pearsonr, gaussian_kde
-from sklearn.metrics import roc_auc_score, confusion_matrix, ConfusionMatrixDisplay, accuracy_score
+from sklearn.metrics import roc_auc_score, confusion_matrix, ConfusionMatrixDisplay, accuracy_score, precision_recall_curve, auc
 
 import torch
 from torch.utils.data import DataLoader
@@ -139,6 +139,7 @@ optim = torch.optim.AdamW(
 )
 loss_fn = RMSELoss() if regression else torch.nn.BCELoss()
 
+save_loss, save_corr_coef, save_accuracy = [], [], []
 for epoch in range(1, epochs+1):
     model.train()
 
@@ -195,7 +196,7 @@ for epoch in range(1, epochs+1):
         corr_coef_matrix = torch.corrcoef(stack_tensor.t())
         corr_coef = corr_coef_matrix[0, 1].item()
     else:
-        outputs_tensor_conv = torch.where(outputs_tensor > threshold, 1, 0)
+        outputs_tensor_conv = torch.where(outputs_tensor > threshold, 1, 0).reshape(-1)
         accuracy = float((outputs_tensor_conv == targets_tensor).float().mean()) * 100
 
     print(
@@ -206,10 +207,42 @@ for epoch in range(1, epochs+1):
             format(accuracy, '.3f')
         )
     )
+    
+    save_loss.append(avg_loss)
+    if regression:
+        save_corr_coef.append(corr_coef)
+    else:
+        save_accuracy.append(accuracy)
+    
+save_loss = np.array(save_loss)
+if regression:
+    save_corr_coef = np.array(save_corr_coef)
+    training_metrics = pd.DataFrame({
+        'Epoch': range(1,epochs+1),
+        'Training_Loss': save_loss,
+        'Training_PearsonR': save_corr_coef
+    })
+else:
+    save_accuracy = np.array(save_accuracy)
+    training_metrics = pd.DataFrame({
+        'Epoch': range(1,epochs+1),
+        'Training_Loss': save_loss,
+        'Training_Accuracy': save_accuracy
+    })
+    
+if not os.path.exists('../figures/DeepLearning_Trials/'):
+    os.makedirs('../figures/DeepLearning_Trials/', exist_ok=True)
         
-all_outputs = []
-all_targets = []
-
+training_metrics.to_csv(
+    './data/TrainingMetrics_' + 
+    'Regression_' + str(regression) + '_' + 
+    'FeatMatrix_' + str(with_additional_feat) + '_' + 
+    'LSTM_' + str(with_LSTM) + '_' + 
+    'BinWidth_' + str(bw) + '.csv', 
+    index=False
+)
+        
+all_outputs, all_targets = [], []
 with torch.no_grad():
     model.eval()
     correct, total, total_loss = 0, 0, 0
@@ -250,22 +283,32 @@ with torch.no_grad():
     targets_tensor = torch.tensor(targets_list)
     
     if regression:
-        outputs_tensor = (2 ** outputs_tensor.view(-1, 1)) - 1
-        targets_tensor = (2 ** targets_tensor.view(-1, 1)) - 1
-    
+        outputs_tensor = outputs_tensor.view(-1, 1)
+        targets_tensor = targets_tensor.view(-1, 1)
         stack_tensor = torch.cat((outputs_tensor, targets_tensor), dim=1)
         corr_coef_matrix = torch.corrcoef(stack_tensor.t())
-        corr_coef = corr_coef_matrix[0, 1].item()
+        corr_coef_logscale = corr_coef_matrix[0, 1].item()
+        
+        outputs_tensor = (2 ** outputs_tensor) - 1
+        targets_tensor = (2 ** targets_tensor) - 1
+        stack_tensor = torch.cat((outputs_tensor, targets_tensor), dim=1)
+        corr_coef_matrix = torch.corrcoef(stack_tensor.t())
+        corr_coef_truescale = corr_coef_matrix[0, 1].item()
     else:
-        outputs_tensor_conv = torch.where(outputs_tensor > threshold, 1, 0)
+        outputs_tensor_conv = torch.where(outputs_tensor > threshold, 1, 0).reshape(-1)
         accuracy = float((outputs_tensor_conv == targets_tensor).float().mean()) * 100
         auroc = roc_auc_score(outputs_tensor_conv, targets_tensor)
+        
+        precision, recall, _ = precision_recall_curve(targets_tensor, outputs_tensor_conv)
+        auprc = auc(recall, precision)
 
     print(
-        "Avg Loss: " + format(avg_loss, '.3f') + ", " + 
+        "Avg Loss: " + format(avg_loss, '.3f') + 
         (
-            "Pearson R: " + format(corr_coef, '.3f') if regression else "Accuracy: " + 
-            format(accuracy, '.3f') + ", AUROC: " + format(auroc, '.3f')
+            ", Pearson R: " + format(corr_coef_truescale, '.3f') if regression else 
+            ", Accuracy: " + format(accuracy, '.3f') + 
+            ", AUROC: " + format(auroc, '.3f') + 
+            ", AUPRC: " + format(auprc, '.3f')
         )
     )
     
@@ -278,10 +321,6 @@ model_output = pd.DataFrame({
     'Targets': all_targets
 })
 
-# Save the DataFrame to a CSV file
-if not os.path.exists('../figures/DeepLearning_Trials/'):
-    os.makedirs('../figures/DeepLearning_Trials/', exist_ok=True)
-
 model_output.to_csv(
     './data/ModelOutput_' + 
     'Regression_' + str(regression) + '_' + 
@@ -291,7 +330,9 @@ model_output.to_csv(
     index=False
 )
 
-def plot_confusion_matrix(y_true, y_pred, auroc=None):
+def plot_confusion_matrix(y_true, y_pred, auroc=None, auprc=None):
+    fontsize = 12
+    
     # Evaluate the model
     accuracy = accuracy_score(y_true, y_pred)
     conf_matrix = confusion_matrix(y_true, y_pred) / len(y_pred)
@@ -302,16 +343,24 @@ def plot_confusion_matrix(y_true, y_pred, auroc=None):
     tick_labels = ['False', 'True']
     
     plt.figure(figsize=(8, 6))
-    sns.heatmap(
+    ax = sns.heatmap(
         conf_matrix, annot=True, fmt=".2%", 
+        annot_kws={"size": fontsize},
         xticklabels=tick_labels, yticklabels=tick_labels
     )
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
     
-    title = "Accuracy: " + format(accuracy, '.3f') + ", AUROC: " + format(auroc, '.3f')
-    plt.title(title, fontsize=16)
+    cbar = ax.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=fontsize)
     
+    plt.xlabel('Predicted', fontsize=fontsize)
+    plt.ylabel('True', fontsize=fontsize)
+    
+    title = (
+        "Accuracy: " + format(accuracy, '.3f') + 
+        ", AUROC: " + format(auroc, '.3f') + 
+        ", AUPRC: " + format(auprc, '.3f')
+    )
+    plt.title(title, fontsize=fontsize)
     plt.savefig(
         '../figures/DeepLearning_Trials/ConfusionMatrix_' + 
         'Regression_' + str(regression) + '_' + 
@@ -321,7 +370,13 @@ def plot_confusion_matrix(y_true, y_pred, auroc=None):
         dpi=300
     )
 
-def plot_predictions_vs_true(yhat, y, bw, log_space=True, y_range=None, fix_yrange=False):
+def plot_predictions_vs_true(
+        yhat, y, bw, corr_coef=[corr_coef_logscale, corr_coef_truescale], 
+        log_space=True, y_range=None, fix_yrange=False
+    ):
+    labelsize = 12
+    fontsize = labelsize + 2
+    
     if not log_space:
         y = 2**y - 1
         yhat = 2**yhat - 1
@@ -346,8 +401,8 @@ def plot_predictions_vs_true(yhat, y, bw, log_space=True, y_range=None, fix_yran
         ax=ax_1
     )
     sns.lineplot(
-        x=[min(y), max(y)], 
-        y=[min(y), max(y)], 
+        x=[-0.05 * max(y), max(y)], 
+        y=[-0.05 * max(y), max(y)], 
         color='grey',
         ax=ax_1
     )
@@ -359,33 +414,40 @@ def plot_predictions_vs_true(yhat, y, bw, log_space=True, y_range=None, fix_yran
         ax=ax_1
     )
     # display pearson correlation coefficient
-    corr_coef = pearsonr(y, yhat)[0]
-    ax_1.text(
-        min(y), 0.95 * max(y),
-        f'Pearson R: {corr_coef:.2f}',
-        ha='left',
-        va='top',
-        fontsize=12,
-        color='black'
-    )
-    
     if fix_yrange:
         ax_1.set_xlim([-0.05 * max(y), max(y)])
         ax_1.set_ylim([-0.05 * max(y), max(y)])
     
-    ax_1.set_xlabel('True (log)' if log_space else 'True')
-    ax_1.set_ylabel('Predicted (log)' if log_space else 'Predicted')
+    ax_1.set_xlabel('True (log)' if log_space else 'True', fontsize=fontsize)
+    ax_1.set_ylabel('Predicted (log)' if log_space else 'Predicted', fontsize=fontsize)
 
     # Create the second subplot on the right side
     ax_2 = axs[1]
-    sns.kdeplot(y, label='True', alpha=0.8, lw=3, fill=False, ax=ax_2, bw_adjust=1)
-    sns.kdeplot(yhat, label='Prediction', alpha=0.8, lw=3, fill=False, ax=ax_2, bw_adjust=1)
-    ax_2.set_xlabel('Number of breaks (log)' if log_space else 'Number of breaks')
-    ax_2.set_ylabel('Density')
-
-    plt.legend()
-    plt.tight_layout()
+    sns.kdeplot(
+        y, label='True', alpha=0.8, 
+        lw=3, fill=False, ax=ax_2, 
+        bw_adjust=1, color='#2166ac'
+    )
+    sns.kdeplot(
+        yhat, label='Prediction', alpha=0.8, 
+        lw=3, fill=False, ax=ax_2, 
+        bw_adjust=1, color='#b2182b'
+    )
+    ax_2.set_xlabel('Number of breaks (log)' if log_space else 'Number of breaks', fontsize=fontsize)
+    ax_2.set_ylabel('Density', fontsize=fontsize)
     
+    for i in range(len(axs)):
+        axs[i].spines['top'].set_visible(False)
+        axs[i].spines['right'].set_visible(False)
+        
+        # increase tick label sizes
+        axs[i].tick_params(axis='both', which='major', labelsize=labelsize)
+
+    title = "Pearson R: " + (format(corr_coef[0], '.3f') if log_space else format(corr_coef[1], '.3f'))
+    ax_1.set_title(title, fontsize=labelsize)
+    ax_2.legend(fontsize=fontsize)
+    
+    plt.tight_layout()
     fig.savefig(
         '../figures/DeepLearning_Trials/Regression_' + 
         'FeatMatrix_' + str(with_additional_feat) + '_' + 
@@ -398,18 +460,17 @@ def plot_predictions_vs_true(yhat, y, bw, log_space=True, y_range=None, fix_yran
 if regression:
     plot_predictions_vs_true(
         y=all_outputs, yhat=all_targets, 
-        bw=bw, fix_yrange=False, 
-        log_space=True
+        bw=bw, fix_yrange=True, log_space=True
     )
 
     plot_predictions_vs_true(
         y=all_outputs, yhat=all_targets, 
-        bw=bw, fix_yrange=True, 
-        log_space=False
+        bw=bw, fix_yrange=True, log_space=False
     )
 else:
     plot_confusion_matrix(
         y_true=targets_tensor.numpy(), 
         y_pred=outputs_tensor_conv.numpy(),
-        auroc=auroc
+        auroc=auroc,
+        auprc=auprc
     )
